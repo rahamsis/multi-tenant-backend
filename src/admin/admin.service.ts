@@ -3,10 +3,10 @@ import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
 export class AdminService {
-    constructor(private readonly databaseService: DatabaseService) { }
+  constructor(private readonly databaseService: DatabaseService) { }
 
-    async getAllProduct(tenant: string): Promise<any> {
-        const nuevosProductos = await this.databaseService.executeQuery(tenant, `
+  async getAllProduct(tenant: string): Promise<any> {
+    const nuevosProductos = await this.databaseService.executeQuery(tenant, `
         SELECT 
           p.idProducto, 
           p.categoria,
@@ -27,6 +27,12 @@ export class AdminService {
         GROUP BY p.idProducto
         ORDER BY p.idProducto;`,);
 
-        return nuevosProductos || null;
-    }
+    return nuevosProductos || null;
+  }
+
+  async updateStatus(tenant: string, body: { idProduct: number, status: number }): Promise<any> {
+    const updateProduct = await this.databaseService.executeQuery(tenant, `
+        UPDATE productos SET activo = ? WHERE idProducto = ?
+        `, [body.status, body.idProduct])
+  }
 }
