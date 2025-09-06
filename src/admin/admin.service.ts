@@ -34,5 +34,7 @@ export class AdminService {
     const updateProduct = await this.databaseService.executeQuery(tenant, `
         UPDATE productos SET activo = ? WHERE idProducto = ?
         `, [body.status, body.idProduct])
+
+    return updateProduct || null;
   }
 }

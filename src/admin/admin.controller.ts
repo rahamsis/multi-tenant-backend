@@ -29,7 +29,9 @@ export class AdminController {
     @Body() body: { idProduct: number, status: number }
   ) {
     try {
-      const data = await this.adminService.updateStatus(tenant, body)
+      const data = await this.adminService.updateStatus(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
     } catch (error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
     }

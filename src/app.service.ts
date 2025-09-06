@@ -24,9 +24,11 @@ export class AppService {
         GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
       FROM productos p
       LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
-      WHERE ? = 1 and p.destacado = 1
-      OR ? = 2 and p.nuevo = 1
-      OR ? = 3 and p.masVendido = 1
+      WHERE p.activo = 1 
+      AND ( 
+        ? = 1 and p.destacado = 1
+        OR ? = 2 and p.nuevo = 1
+        OR ? = 3 and p.masVendido = 1)
       GROUP BY p.idProducto
       ORDER BY RAND()
       LIMIT 8;`, [feature, feature, feature]);
@@ -53,7 +55,7 @@ export class AppService {
         GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
       FROM productos p
       LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
-      WHERE LOWER(categoria) = LOWER(?)
+      WHERE LOWER(categoria) = LOWER(?) and p.activo = 1
       GROUP BY p.idProducto
       ORDER BY p.idProducto ASC;`, [category]);
 
