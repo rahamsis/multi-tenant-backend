@@ -6,15 +6,19 @@ export class AppService {
   constructor(private readonly databaseService: DatabaseService) { }
 
   async getNewProduct(tenant: string, feature: number): Promise<any> {
-    const nuevosProductos = await this.databaseService.executeQuery(tenant,`
+    const nuevosProductos = await this.databaseService.executeQuery(tenant, `
       SELECT 
         p.idProducto, 
-        p.categoria,
-        p.subCategoria,
-        p.marca, 
+        c.idCategoria,
+        c.categoria,
+        sc.idSubCategoria,
+        sc.subCategoria,
+        m.idMarca,
+        m.marca, 
         p.nombre,
         p.precio,
-        p.color,
+        cl.idColor,
+        cl.color,
         p.descripcion, 
         p.imagen,
         p.destacado,
@@ -23,6 +27,10 @@ export class AppService {
         p.activo, 
         GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
       FROM productos p
+      LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
+      LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
+      LEFT JOIN marcas m ON p.idMarca = m.idMarca
+      LEFT JOIN colores cl ON p.idColor = cl.idColor
       LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
       WHERE p.activo = 1 
       AND ( 
@@ -37,15 +45,19 @@ export class AppService {
   }
 
   async getProductByCategory(tenant: string, category: string): Promise<any> {
-    const productos = await this.databaseService.executeQuery(tenant,`
+    const productos = await this.databaseService.executeQuery(tenant, `
       SELECT 
         p.idProducto, 
-        p.categoria,
-        p.subCategoria,
-        p.marca, 
+        c.idCategoria,
+        c.categoria,
+        sc.idSubCategoria,
+        sc.subCategoria,
+        m.idMarca,
+        m.marca,
         p.nombre,
         p.precio,
-        p.color,
+        cl.idColor,
+        cl.color,
         p.descripcion, 
         p.imagen,
         p.destacado,
@@ -54,8 +66,12 @@ export class AppService {
         p.activo, 
         GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
       FROM productos p
+      LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
+      LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
+      LEFT JOIN marcas m ON p.idMarca = m.idMarca
+      LEFT JOIN colores cl ON p.idColor = cl.idColor
       LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
-      WHERE LOWER(categoria) = LOWER(?) and p.activo = 1
+      WHERE LOWER(c.categoria) = LOWER(?) and p.activo = 1
       GROUP BY p.idProducto
       ORDER BY p.idProducto ASC;`, [category]);
 

@@ -16,7 +16,7 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
     HttpModule,
     R2Module,
     AdminModule,
-    AuthModule
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
