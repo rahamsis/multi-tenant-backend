@@ -20,7 +20,7 @@ export class AuthController {
         }
         try {
             const data = await this.authService.login(body.email, body.password, tenantId);
-            console.log("data a enviar: ", data)
+
             return res.status(HttpStatus.OK).json(data);
         } catch (error) {
             res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });

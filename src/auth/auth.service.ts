@@ -12,7 +12,6 @@ export class AuthService {
   ) { }
 
   async login(email: string, password: string, tenantId: string) {
-    console.log(tenantId);
     const user = await this.validateUser(email, password, tenantId);
 
     const payload = {
@@ -20,8 +19,7 @@ export class AuthService {
       email: user.email,
       tenant: tenantId,
     };
-    console.log("token: ", payload)
-    console.log("user: ", user)
+
     return {
       user: {
         id: user.userId,

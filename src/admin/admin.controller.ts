@@ -3,7 +3,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Response, } from 'express';
-import { ProductDto } from 'src/dto/admin.dto';
+import { CategorieDto, ColorDto, MarcaDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
 
 @ApiTags('Admin')
 @Controller()
@@ -95,16 +95,76 @@ export class AdminController {
     }
   }
 
-  @Post('/save-product')
+  @Post('/save-or-update-product')
   @UseInterceptors(FilesInterceptor('files', 3))
   async saveProduct(
     @Headers('x-tenant-id') tenant: string,
     @UploadedFiles() file: Express.Multer.File[],
     @Res() res: Response,
-    @Body() body: ProductDto,
+    @Body() body: NewProductDto,
   ) {
     try {
-      const data = await this.adminService.saveProduct(tenant, file, "", body);
+      const data = await this.adminService.saveProduct(tenant, file, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/update-or-save-categorie')
+  async saveOrUpdateCategorie(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: CategorieDto,
+  ) {
+    try {
+      const data = await this.adminService.saveOrUpdateCategorie(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/update-or-save-subcategorie')
+  async saveOrUpdateSubCategorie(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: SubCategorieDto,
+  ) {
+    try {
+      const data = await this.adminService.saveOrUpdateSubCategorie(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/update-or-save-marca')
+  async saveOrUpdateMarca(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: MarcaDto,
+  ) {
+    try {
+      const data = await this.adminService.saveOrUpdateMarca(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/update-or-save-color')
+  async saveOrUpdateColor(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: ColorDto,
+  ) {
+    try {
+      const data = await this.adminService.saveOrUpdateColor(tenant, body);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
