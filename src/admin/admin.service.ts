@@ -28,6 +28,7 @@ export class AdminService {
           m.marca, 
           p.nombre,
           p.precio,
+          p.cantidad,
           cl.idColor,
           cl.color,
           p.descripcion, 
@@ -86,6 +87,110 @@ export class AdminService {
   }
 
   async saveProduct(tenant: string, files: Express.Multer.File[], body: NewProductDto): Promise<any> {
+    let categoria = "";
+    let subcategoria = "";
+
+    // Obtiene cataegoria para adjuntarlo en la ruta
+    if (body?.idCategoria && body.idCategoria.trim() !== "") {
+      const result = await this.databaseService.executeQuery(
+        tenant,
+        `SELECT categoria FROM categorias WHERE idCategoria = ?`,
+        [body.idCategoria]
+      );
+      categoria = result.length > 0 ? result[0].categoria : "";
+    }
+
+    // Obtiene la subcategoria para adjuntarlo en la ruta
+    if (body?.idSubCategoria && body.idSubCategoria.trim() !== "") {
+      const result = await this.databaseService.executeQuery(
+        tenant,
+        `SELECT subCategoria FROM subcategorias WHERE idSubCategoria = ?`,
+        [body.idSubCategoria]
+      );
+      subcategoria = result.length > 0 ? result[0].subCategoria : "";
+    }
+
+    const parts = [tenant, categoria, subcategoria].filter(Boolean);
+    const folder = parts.join("/");
+
+    const rows = await this.databaseService.executeQuery(tenant, `
+      SELECT idProducto FROM productos ORDER BY idProducto DESC limit 1;`, []);
+    const lastIdProducto = rows.length > 0 ? rows[0].idProducto : "PROD0000";
+    const idProducto = nextCode(lastIdProducto);
+
+    let mainImageUrl: string | null = null;
+    if (files && files.length > 0) {
+      // ✅ Primera imagen con idProducto
+      const firstFile = files[0];
+      const uploadMain = await this.uploadToCloudinary(
+        firstFile,
+        idProducto,
+        folder
+      );
+
+      mainImageUrl = uploadMain.secure_url;
+
+      // ✅ Otras imágenes → tabla fotos
+      const otherFiles = files.slice(1);
+      for (const file of otherFiles) {
+        const rows = await this.databaseService.executeQuery(tenant, `
+          SELECT idFoto FROM fotosproductos ORDER BY idFoto DESC limit 1;`, []);
+        const lastIdFoto = rows.length > 0 ? rows[0].idFoto : "FPRD0000";
+        const idFoto = nextCode(lastIdFoto);
+
+        const nextOrden = rows[0].maxOrden + 1;
+
+        // 1. Insertar registro en fotos y obtener idFoto
+        const fotoResult = await this.databaseService.executeQuery(
+          tenant,
+          `INSERT INTO fotosproductos (idFoto, idProducto, orden, userId, created_at, updated_at) 
+          VALUES (?, ?, ?, ?, NOW(), NOW())`,
+          [idFoto, idProducto, nextOrden, body.userId]
+        );
+
+        // 2. Subir a Cloudinary usando idFoto
+        const upload = await this.uploadToCloudinary(
+          file,
+          idFoto,
+          folder
+        );
+
+        // 3. Actualizar URL en tabla fotos
+        await this.databaseService.executeQuery(
+          tenant,
+          `UPDATE fotosproductos SET url_foto = ? WHERE idFoto = ?`,
+          [upload.secure_url, idFoto]
+        );
+      }
+    }
+
+    const result = await this.databaseService.executeQuery(tenant, `
+      INSERT INTO productos (idProducto, idCategoria, idSubCategoria, idMarca, nombre, precio, idColor, 
+      descripcion, imagen, destacado, nuevo, masVendido, activo, userId, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());`,
+      [
+        idProducto,
+        body.idCategoria,
+        body.idSubCategoria,
+        body.idMarca,
+        body.nombre,
+        body.precio,
+        body.idColor,
+        body.descripcion,
+        mainImageUrl,
+        body.destacado,
+        body.nuevo,
+        body.masVendido,
+        body.activo ? 1 : 0,
+        body.userId]);
+
+    return {
+      message: 'Producto creado exitosamente',
+      result,
+    };
+  }
+
+  async updateProduct(tenant: string, files: Express.Multer.File[], body: NewProductDto): Promise<any> {
     let categoria = "";
     let subcategoria = "";
 
@@ -200,85 +305,6 @@ export class AdminService {
         };
       }
     }
-
-    const rows = await this.databaseService.executeQuery(tenant, `
-      SELECT idProducto FROM productos ORDER BY idProducto DESC limit 1;`, []);
-    const lastIdProducto = rows.length > 0 ? rows[0].idProducto : "PROD0000";
-    const idProducto = nextCode(lastIdProducto);
-
-    let mainImageUrl: string | null = null;
-    if (files && files.length > 0) {
-      // ✅ Primera imagen con idProducto
-      const firstFile = files[0];
-      const uploadMain = await this.uploadToCloudinary(
-        firstFile,
-        idProducto,
-        folder
-      );
-
-      mainImageUrl = uploadMain.secure_url;
-
-      // ✅ Otras imágenes → tabla fotos
-      const otherFiles = files.slice(1);
-      for (const file of otherFiles) {
-        const rows = await this.databaseService.executeQuery(tenant, `
-          SELECT idFoto FROM fotosproductos ORDER BY idFoto DESC limit 1;`, []);
-        const lastIdFoto = rows.length > 0 ? rows[0].idFoto : "FPRD0000";
-        const idFoto = nextCode(lastIdFoto);
-
-        const nextOrden = rows[0].maxOrden + 1;
-
-        // 1. Insertar registro en fotos y obtener idFoto
-        const fotoResult = await this.databaseService.executeQuery(
-          tenant,
-          `INSERT INTO fotosproductos (idFoto, idProducto, orden, userId, created_at, updated_at) 
-          VALUES (?, ?, ?, ?, NOW(), NOW())`,
-          [idFoto, idProducto, nextOrden, body.userId]
-        );
-
-        // 👇 esto depende de tu driver de BD
-        // const idFoto = fotoResult.insertId;
-
-        // 2. Subir a Cloudinary usando idFoto
-        const upload = await this.uploadToCloudinary(
-          file,
-          idFoto,
-          folder
-        );
-
-        // 3. Actualizar URL en tabla fotos
-        await this.databaseService.executeQuery(
-          tenant,
-          `UPDATE fotosproductos SET url_foto = ? WHERE idFoto = ?`,
-          [upload.secure_url, idFoto]
-        );
-      }
-    }
-
-    const result = await this.databaseService.executeQuery(tenant, `
-      INSERT INTO productos (idProducto, idCategoria, idSubCategoria, idMarca, nombre, precio, idColor, 
-      descripcion, imagen, destacado, nuevo, masVendido, activo, userId, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());`,
-      [
-        idProducto,
-        body.idCategoria,
-        body.idSubCategoria,
-        body.idMarca,
-        body.nombre,
-        body.precio,
-        body.idColor,
-        body.descripcion,
-        mainImageUrl,
-        body.destacado,
-        body.nuevo,
-        body.masVendido,
-        body.activo ? 1 : 0,
-        body.userId]);
-
-    return {
-      message: 'Producto creado exitosamente',
-      result,
-    };
   }
 
   private uploadToCloudinary(file: Express.Multer.File, id: string, folder: string): Promise<any> {
@@ -433,5 +459,40 @@ export class AdminService {
       message: 'Color creado exitosamente',
       result,
     };
+  }
+
+  async getProductById(tenant: string, idProducto: string): Promise<any> {
+    const nuevosProductos = await this.databaseService.executeQuery(tenant, `
+        SELECT 
+          p.idProducto,
+          c.idCategoria,
+          c.categoria,
+          sc.idSubCategoria,
+          sc.subCategoria,
+          m.idMarca,
+          m.marca, 
+          p.nombre,
+          p.precio,
+          p.cantidad,
+          cl.idColor,
+          cl.color,
+          p.descripcion, 
+          p.imagen,
+          p.destacado,
+          p.nuevo, 
+          p.masVendido, 
+          p.activo, 
+          GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
+        FROM productos p
+        LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
+        LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
+        LEFT JOIN marcas m ON p.idMarca = m.idMarca
+        LEFT JOIN colores cl ON p.idColor = cl.idColor
+        LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
+        WHERE p.idProducto = ?
+        GROUP BY p.idProducto
+        ORDER BY p.idProducto;`, [idProducto]);
+
+    return nuevosProductos || null;
   }
 }

@@ -95,7 +95,7 @@ export class AdminController {
     }
   }
 
-  @Post('/save-or-update-product')
+  @Post('/save-product')
   @UseInterceptors(FilesInterceptor('files', 3))
   async saveProduct(
     @Headers('x-tenant-id') tenant: string,
@@ -165,6 +165,21 @@ export class AdminController {
   ) {
     try {
       const data = await this.adminService.saveOrUpdateColor(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Get('/product-by-idProduct')
+  async getProductById(
+    @Headers('x-tenant-id') tenant: string,
+    @Query('idProduct') idProducto: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.adminService.getProductById(tenant, idProducto);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
