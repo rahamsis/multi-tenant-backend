@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 import { CategorieDto, ColorDto, MarcaDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
-import { nextCode, buildUpdateFields, moveAllProductImages, deleteProductImages, addNewProductImages } from 'src/util/util';
+import { Util } from 'src/util/util';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly databaseService: DatabaseService) { }
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly util: Util
+  ) { }
 
   async getAllProduct(tenant: string): Promise<any> {
     const nuevosProductos = await this.databaseService.executeQuery(tenant, `
@@ -86,11 +89,11 @@ export class AdminService {
     const rows = await this.databaseService.executeQuery(tenant, `
       SELECT idProducto FROM productos ORDER BY idProducto DESC limit 1;`, []);
     const lastIdProducto = rows.length > 0 ? rows[0].idProducto : "PROD0000";
-    const idProducto = nextCode(lastIdProducto);
+    const idProducto = this.util.nextCode(lastIdProducto);
 
     // 1. Subir nuevas imágenes
     if (files?.length) {
-      await addNewProductImages(tenant, files, body);
+      await this.util.addNewProductImages(tenant, files, body);
     }
 
     const result = await this.databaseService.executeQuery(tenant, `
@@ -119,121 +122,37 @@ export class AdminService {
   }
 
   async updateProduct(tenant: string, files: Express.Multer.File[], body: NewProductDto): Promise<any> {
-    console.log("a actualizar: ", body)
+
+    // Parse fotoDeleted to ensure it's an array
+    this.util.parseFotoDeleted(body);
 
     // 1. Actualizar campos del producto
-    const { updateFields, updateValues } = buildUpdateFields(body);
+    const { updateFields, updateValues } = this.util.buildUpdateFields(body);
 
-    // 2. Mover imágenes si cambió la ruta
-    if (body.rutaCloudinary !== body.nuevaRutaCloudinary) {
-      await moveAllProductImages(tenant, body);
+    // 2. Eliminar imágenes si corresponde
+    if (body.fotoDeleted.length) {
+      await this.util.deleteProductImages(tenant, body);
     }
 
-    // 3. Eliminar imágenes si corresponde
-    if (body.fotoDeleted?.length) {
-      await deleteProductImages(tenant, body);
+    // 3. Mover imágenes si cambió la ruta
+    if (body.rutaCloudinary !== body.nuevaRutaCloudinary) {
+      await this.util.moveAllProductImages(tenant, body);
     }
 
     // 4. Subir nuevas imágenes
     if (files?.length) {
-      await addNewProductImages(tenant, files, body);
+      await this.util.addNewProductImages(tenant, files, body);
     }
 
     // 5. Actualizar producto
     const sql = `UPDATE productos SET ${updateFields.join(", ")}, updated_at = NOW() WHERE idProducto = ?`;
     updateValues.push(body.idProducto);
-
     const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
 
     return {
       message: "producto actualizado exitosamente",
       result,
     };
-
-    // if (body.fotoDeleted && body.fotoDeleted.length > 0) {
-    //   // Eliminar las imágenes de Cloudinary y la base de datos
-    //   for (const foto of body.fotoDeleted) {
-
-    //     const publicId = [body.rutaCloudinary, foto.idFoto].join("/");
-    //     await this.deleteFromCloudinary(publicId);
-
-    //     await this.databaseService.executeQuery(
-    //       tenant,
-    //       `DELETE FROM fotosproductos WHERE idFoto IN (${body.fotoDeleted.map(() => '?').join(',')})`,
-    //       body.fotoDeleted.map(f => f.idFoto)
-    //     );
-
-    //     // si la imagen es principal poner otra como principal
-    //     if (foto.isPrincipal) {
-    //       const [newPrincipal] = await this.databaseService.executeQuery(
-    //         tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? ORDER BY idFoto ASC LIMIT 1`, [body.idProducto]
-    //       );
-
-    //       if (newPrincipal) {
-    //         await this.databaseService.executeQuery(
-    //           tenant, `UPDATE fotosproductos SET isPrincipal = 1 WHERE idFoto = ?`, [newPrincipal.idFoto]
-    //         );
-    //       }
-    //     }
-    //   }
-    // }
-
-    // Manejo de imágenes en caso de update por imagenes nuevas ya que  si son las mismas imagenes no envia files
-    // if (files && files.length > 0) {
-    //   //Buscamos si existe alguna imagen principal
-    //   const [principalExists] = await this.databaseService.executeQuery(
-    //     tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? AND isPrincipal = 1`, [body.idProducto]
-    //   );
-
-    //   let principal = principalExists ? 0 : 1; // Si ya existe una principal, las nuevas no lo serán
-
-    //   for (const file of files) {
-    //     const rows = await this.databaseService.executeQuery(tenant, `
-    //           SELECT idFoto FROM fotosproductos ORDER BY idFoto DESC limit 1;`, []);
-    //     const lastIdFoto = rows.length > 0 ? rows[0].idFoto : "FPRD0000";
-    //     const idFoto = nextCode(lastIdFoto);
-
-    //     const fotoResult = await this.databaseService.executeQuery(
-    //       tenant,
-    //       `INSERT INTO fotosproductos (idFoto, idProducto, userId, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
-    //       [idFoto, body.idProducto, body.userId]
-    //     );
-
-    //     const upload = await this.uploadToCloudinary(
-    //       file,
-    //       idFoto,
-    //       body.rutaCloudinary,
-    //       body.nuevaRutaCloudinary
-    //     );
-
-    //     await this.databaseService.executeQuery(
-    //       tenant,
-    //       `UPDATE fotosproductos SET url_foto = ?, isPrincipal = ?, rutaCloudinary = ? WHERE idFoto = ?`,
-    //       [upload.secure_url, principal, body.nuevaRutaCloudinary, idFoto]
-    //     );
-    //   }
-
-
-    //   // Siempre actualizamos la fecha
-    //   updateFields.push("updated_at = NOW()");
-
-    //   // Agregamos el ID del usuario al final
-    //   updateValues.push(body.idProducto);
-
-    //   // Construimos la consulta dinámica
-    //   const sql = `
-    //       UPDATE productos 
-    //       SET ${updateFields.join(", ")} 
-    //       WHERE idProducto = ?`;
-    //   console.log("sql: ", sql)
-    //   console.log("values: ", updateValues)
-    //   const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
-
-    //   return {
-    //     message: 'producto actualizado exitosamente',
-    //     result,
-    //   };
-    // }
   }
 
   async saveOrUpdateCategorie(tenant: string, body: CategorieDto): Promise<any> {
@@ -257,7 +176,7 @@ export class AdminService {
     const rows = await this.databaseService.executeQuery(tenant, `
       SELECT idCategoria FROM categorias ORDER BY idCategoria DESC limit 1;`, []);
     const lastIdCategoria = rows.length > 0 ? rows[0].idCategoria : "CATE0000";
-    const idCategoria = nextCode(lastIdCategoria);
+    const idCategoria = this.util.nextCode(lastIdCategoria);
 
     const result = await this.databaseService.executeQuery(tenant, `
       INSERT INTO categorias (idCategoria, categoria, userId, created_at, updated_at)
@@ -290,7 +209,7 @@ export class AdminService {
     const rows = await this.databaseService.executeQuery(tenant, `
       SELECT idSubCategoria FROM subcategorias ORDER BY idSubCategoria DESC limit 1;`, []);
     const lastIdSubCategoria = rows.length > 0 ? rows[0].idSubCategoria : "SCAT0000";
-    const idSubCategoria = nextCode(lastIdSubCategoria);
+    const idSubCategoria = this.util.nextCode(lastIdSubCategoria);
 
     const result = await this.databaseService.executeQuery(tenant, `
       INSERT INTO subcategorias (idSubCategoria, subCategoria, userId, created_at, updated_at)
@@ -324,7 +243,7 @@ export class AdminService {
     const rows = await this.databaseService.executeQuery(tenant, `
       SELECT idMarca FROM marcas ORDER BY idMarca DESC limit 1;`, []);
     const lastIdMarca = rows.length > 0 ? rows[0].idMarca : "MARC0000";
-    const idMarca = nextCode(lastIdMarca);
+    const idMarca = this.util.nextCode(lastIdMarca);
 
     const result = await this.databaseService.executeQuery(tenant, `
       INSERT INTO marcas (idMarca, marca, userId, created_at, updated_at)
@@ -358,7 +277,7 @@ export class AdminService {
     const rows = await this.databaseService.executeQuery(tenant, `
       SELECT idColor FROM colores ORDER BY idColor DESC limit 1;`, []);
     const lastIdColor = rows.length > 0 ? rows[0].idColor : "COLO0000";
-    const idColor = nextCode(lastIdColor);
+    const idColor = this.util.nextCode(lastIdColor);
 
     const result = await this.databaseService.executeQuery(tenant, `
       INSERT INTO colores (idColor, color, userId, created_at, updated_at)

@@ -1,6 +1,3 @@
-import { Transform, Type } from 'class-transformer';
-import { IsArray, ValidateNested, IsString, IsBoolean, isString, isBoolean } from 'class-validator';
-
 export class ProductDto {
     idProducto: number;
     idCategoria: string;
@@ -28,27 +25,20 @@ export class NewProductDto {
     idMarca: string;
     idColor: string;
     nombre: string;
-    precio: number;    
+    precio: number;
     descripcion: string;
     destacado: boolean;
     nuevo: boolean;
     masVendido: boolean;
     activo: boolean;
     userId: string;
-    
-    @Transform(({value}) => {typeof value === 'string' ? JSON.parse(value) : value})
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => FotoDeleted)
     fotoDeleted: FotoDeleted[];
     rutaCloudinary: string;
     nuevaRutaCloudinary: string;
 }
 
-class FotoDeleted {
-    @IsString()
+export class FotoDeleted {
     idFoto: string;
-    @IsBoolean()
     isPrincipal: boolean;
 }
 
