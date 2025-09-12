@@ -81,7 +81,7 @@ export class AdminController {
   }
 
   @Put('/update-status')
-  async updateProduct(
+  async updateStatus(
     @Headers('x-tenant-id') tenant: string,
     @Res() res: Response,
     @Body() body: { idProduct: number, status: number }
@@ -96,7 +96,9 @@ export class AdminController {
   }
 
   @Post('/save-product')
-  @UseInterceptors(FilesInterceptor('files', 3))
+  @UseInterceptors(FilesInterceptor('files', 3, {
+    limits: { fileSize: 50 * 1024 * 1024 }, // ⬅️ 50 MB por archivo
+  }))
   async saveProduct(
     @Headers('x-tenant-id') tenant: string,
     @UploadedFiles() file: Express.Multer.File[],
@@ -105,6 +107,25 @@ export class AdminController {
   ) {
     try {
       const data = await this.adminService.saveProduct(tenant, file, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Put('/update-product')
+  @UseInterceptors(FilesInterceptor('files', 3, {
+    limits: { fileSize: 50 * 1024 * 1024 }, // ⬅️ 50 MB por archivo
+  }))
+  async updateProduct(
+    @Headers('x-tenant-id') tenant: string,
+    @UploadedFiles() file: Express.Multer.File[],
+    @Res() res: Response,
+    @Body() body: NewProductDto,
+  ) {
+    try {
+      const data = await this.adminService.updateProduct(tenant, file, body);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {

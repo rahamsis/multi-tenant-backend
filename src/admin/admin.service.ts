@@ -1,20 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { v2 as cloudinary } from 'cloudinary';
 import { DatabaseService } from 'src/database/database.service';
 import { CategorieDto, ColorDto, MarcaDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
-import { nextCode } from 'src/util/util';
-import { Readable } from 'stream';
+import { nextCode, buildUpdateFields, moveAllProductImages, deleteProductImages, addNewProductImages } from 'src/util/util';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly databaseService: DatabaseService) {
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-      secure: true,
-    });
-  }
+  constructor(private readonly databaseService: DatabaseService) { }
 
   async getAllProduct(tenant: string): Promise<any> {
     const nuevosProductos = await this.databaseService.executeQuery(tenant, `
@@ -31,13 +22,18 @@ export class AdminService {
           p.cantidad,
           cl.idColor,
           cl.color,
-          p.descripcion, 
-          p.imagen,
+          p.descripcion,
           p.destacado,
           p.nuevo, 
           p.masVendido, 
           p.activo, 
-          GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
+          JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'idFoto', fp.idFoto,
+              'url_foto', fp.url_foto,
+              'isPrincipal', fp.isPrincipal
+            )
+          ) AS fotos
         FROM productos p
         LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
         LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
@@ -87,87 +83,20 @@ export class AdminService {
   }
 
   async saveProduct(tenant: string, files: Express.Multer.File[], body: NewProductDto): Promise<any> {
-    let categoria = "";
-    let subcategoria = "";
-
-    // Obtiene cataegoria para adjuntarlo en la ruta
-    if (body?.idCategoria && body.idCategoria.trim() !== "") {
-      const result = await this.databaseService.executeQuery(
-        tenant,
-        `SELECT categoria FROM categorias WHERE idCategoria = ?`,
-        [body.idCategoria]
-      );
-      categoria = result.length > 0 ? result[0].categoria : "";
-    }
-
-    // Obtiene la subcategoria para adjuntarlo en la ruta
-    if (body?.idSubCategoria && body.idSubCategoria.trim() !== "") {
-      const result = await this.databaseService.executeQuery(
-        tenant,
-        `SELECT subCategoria FROM subcategorias WHERE idSubCategoria = ?`,
-        [body.idSubCategoria]
-      );
-      subcategoria = result.length > 0 ? result[0].subCategoria : "";
-    }
-
-    const parts = [tenant, categoria, subcategoria].filter(Boolean);
-    const folder = parts.join("/");
-
     const rows = await this.databaseService.executeQuery(tenant, `
       SELECT idProducto FROM productos ORDER BY idProducto DESC limit 1;`, []);
     const lastIdProducto = rows.length > 0 ? rows[0].idProducto : "PROD0000";
     const idProducto = nextCode(lastIdProducto);
 
-    let mainImageUrl: string | null = null;
-    if (files && files.length > 0) {
-      // ✅ Primera imagen con idProducto
-      const firstFile = files[0];
-      const uploadMain = await this.uploadToCloudinary(
-        firstFile,
-        idProducto,
-        folder
-      );
-
-      mainImageUrl = uploadMain.secure_url;
-
-      // ✅ Otras imágenes → tabla fotos
-      const otherFiles = files.slice(1);
-      for (const file of otherFiles) {
-        const rows = await this.databaseService.executeQuery(tenant, `
-          SELECT idFoto FROM fotosproductos ORDER BY idFoto DESC limit 1;`, []);
-        const lastIdFoto = rows.length > 0 ? rows[0].idFoto : "FPRD0000";
-        const idFoto = nextCode(lastIdFoto);
-
-        const nextOrden = rows[0].maxOrden + 1;
-
-        // 1. Insertar registro en fotos y obtener idFoto
-        const fotoResult = await this.databaseService.executeQuery(
-          tenant,
-          `INSERT INTO fotosproductos (idFoto, idProducto, orden, userId, created_at, updated_at) 
-          VALUES (?, ?, ?, ?, NOW(), NOW())`,
-          [idFoto, idProducto, nextOrden, body.userId]
-        );
-
-        // 2. Subir a Cloudinary usando idFoto
-        const upload = await this.uploadToCloudinary(
-          file,
-          idFoto,
-          folder
-        );
-
-        // 3. Actualizar URL en tabla fotos
-        await this.databaseService.executeQuery(
-          tenant,
-          `UPDATE fotosproductos SET url_foto = ? WHERE idFoto = ?`,
-          [upload.secure_url, idFoto]
-        );
-      }
+    // 1. Subir nuevas imágenes
+    if (files?.length) {
+      await addNewProductImages(tenant, files, body);
     }
 
     const result = await this.databaseService.executeQuery(tenant, `
       INSERT INTO productos (idProducto, idCategoria, idSubCategoria, idMarca, nombre, precio, idColor, 
-      descripcion, imagen, destacado, nuevo, masVendido, activo, userId, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());`,
+      descripcion, destacado, nuevo, masVendido, activo, userId, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());`,
       [
         idProducto,
         body.idCategoria,
@@ -177,7 +106,6 @@ export class AdminService {
         body.precio,
         body.idColor,
         body.descripcion,
-        mainImageUrl,
         body.destacado,
         body.nuevo,
         body.masVendido,
@@ -191,139 +119,121 @@ export class AdminService {
   }
 
   async updateProduct(tenant: string, files: Express.Multer.File[], body: NewProductDto): Promise<any> {
-    let categoria = "";
-    let subcategoria = "";
+    console.log("a actualizar: ", body)
 
-    // Obtiene cataegoria para adjuntarlo en la ruta
-    if (body?.idCategoria && body.idCategoria.trim() !== "") {
-      const result = await this.databaseService.executeQuery(
-        tenant,
-        `SELECT categoria FROM categorias WHERE idCategoria = ?`,
-        [body.idCategoria]
-      );
-      categoria = result.length > 0 ? result[0].categoria : "";
+    // 1. Actualizar campos del producto
+    const { updateFields, updateValues } = buildUpdateFields(body);
+
+    // 2. Mover imágenes si cambió la ruta
+    if (body.rutaCloudinary !== body.nuevaRutaCloudinary) {
+      await moveAllProductImages(tenant, body);
     }
 
-    // Obtiene la subcategoria para adjuntarlo en la ruta
-    if (body?.idSubCategoria && body.idSubCategoria.trim() !== "") {
-      const result = await this.databaseService.executeQuery(
-        tenant,
-        `SELECT subCategoria FROM subcategorias WHERE idSubCategoria = ?`,
-        [body.idSubCategoria]
-      );
-      subcategoria = result.length > 0 ? result[0].subCategoria : "";
+    // 3. Eliminar imágenes si corresponde
+    if (body.fotoDeleted?.length) {
+      await deleteProductImages(tenant, body);
     }
 
-    const parts = [tenant, categoria, subcategoria].filter(Boolean);
-    const folder = parts.join("/");
-
-    if (body?.idProducto) {
-      const products = await this.databaseService.executeQuery(tenant, `
-      SELECT idProducto FROM productos WHERE idProducto = ?;`, [body.idProducto]);
-
-      if (products.length > 0) {
-        const updateFields: string[] = [];
-        const updateValues: any[] = [];
-
-        // Recorremos cada propiedad del objeto body
-        Object.keys(body).forEach((key) => {
-          const value = body[key as keyof NewProductDto];
-
-          // Si el valor no es nulo, vacío o indefinido, lo agregamos a la consulta
-          if (value !== null && value !== undefined && value !== "") {
-            // Omitimos el campo imagen
-            if (key === "imagen") return;
-            updateFields.push(`${key} = ?`);
-            updateValues.push(value);
-          }
-        });
-
-        // 🚀 Manejo de imágenes en caso de update
-        if (files && files.length > 0) {
-          const folderParts = [tenant];
-          const folder = folderParts.join("/");
-
-          // ✅ Primera imagen: reemplazar la principal del producto
-          const firstFile = files[0];
-          const uploadMain = await this.uploadToCloudinary(
-            firstFile,
-            body.idProducto, // mantener mismo public_id del producto
-            folder
-          );
-
-          // Actualizamos campo imagen en la tabla productos
-          updateFields.push("imagen = ?");
-          updateValues.push(uploadMain.secure_url);
-
-          // ✅ Otras imágenes → se insertan en fotos
-          const otherFiles = files.slice(1);
-          for (const file of otherFiles) {
-            const rows = await this.databaseService.executeQuery(tenant, `
-              SELECT idFoto FROM fotosproductos ORDER BY idFoto DESC limit 1;`, []);
-            const lastIdFoto = rows.length > 0 ? rows[0].idFoto : "FPRD0000";
-            const idFoto = nextCode(lastIdFoto);
-
-            const nextOrden = rows[0].maxOrden + 1;
-
-            const fotoResult = await this.databaseService.executeQuery(
-              tenant,
-              `INSERT INTO fotosproductos (idFoto, idProducto, orden, userId, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())`,
-              [idFoto, body.idProducto, nextOrden, body.userId]
-            );
-
-            const upload = await this.uploadToCloudinary(
-              file,
-              idFoto,
-              folder
-            );
-
-            await this.databaseService.executeQuery(
-              tenant,
-              `UPDATE fotosproductos SET url_foto = ? WHERE idFoto = ?`,
-              [upload.secure_url, idFoto]
-            );
-          }
-        }
-
-        // Siempre actualizamos la fecha
-        updateFields.push("updated_at = NOW()");
-
-        // Agregamos el ID del usuario al final
-        updateValues.push(body.idProducto);
-
-        // Construimos la consulta dinámica
-        const sql = `
-          UPDATE productos 
-          SET ${updateFields.join(", ")} 
-          WHERE idProducto = ?`;
-
-        const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
-
-        return {
-          message: 'Categoria actualizada exitosamente',
-          result,
-        };
-      }
+    // 4. Subir nuevas imágenes
+    if (files?.length) {
+      await addNewProductImages(tenant, files, body);
     }
-  }
 
-  private uploadToCloudinary(file: Express.Multer.File, id: string, folder: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          public_id: id,       // 👈 nombre único para la imagen
-          overwrite: true,     // 👈 reemplaza si ya existe
-          invalidate: true     // 👈 limpia caché CDN de Cloudinary
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
-        },
-      );
+    // 5. Actualizar producto
+    const sql = `UPDATE productos SET ${updateFields.join(", ")}, updated_at = NOW() WHERE idProducto = ?`;
+    updateValues.push(body.idProducto);
 
-      Readable.from(file.buffer).pipe(uploadStream);
-    });
+    const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
+
+    return {
+      message: "producto actualizado exitosamente",
+      result,
+    };
+
+    // if (body.fotoDeleted && body.fotoDeleted.length > 0) {
+    //   // Eliminar las imágenes de Cloudinary y la base de datos
+    //   for (const foto of body.fotoDeleted) {
+
+    //     const publicId = [body.rutaCloudinary, foto.idFoto].join("/");
+    //     await this.deleteFromCloudinary(publicId);
+
+    //     await this.databaseService.executeQuery(
+    //       tenant,
+    //       `DELETE FROM fotosproductos WHERE idFoto IN (${body.fotoDeleted.map(() => '?').join(',')})`,
+    //       body.fotoDeleted.map(f => f.idFoto)
+    //     );
+
+    //     // si la imagen es principal poner otra como principal
+    //     if (foto.isPrincipal) {
+    //       const [newPrincipal] = await this.databaseService.executeQuery(
+    //         tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? ORDER BY idFoto ASC LIMIT 1`, [body.idProducto]
+    //       );
+
+    //       if (newPrincipal) {
+    //         await this.databaseService.executeQuery(
+    //           tenant, `UPDATE fotosproductos SET isPrincipal = 1 WHERE idFoto = ?`, [newPrincipal.idFoto]
+    //         );
+    //       }
+    //     }
+    //   }
+    // }
+
+    // Manejo de imágenes en caso de update por imagenes nuevas ya que  si son las mismas imagenes no envia files
+    // if (files && files.length > 0) {
+    //   //Buscamos si existe alguna imagen principal
+    //   const [principalExists] = await this.databaseService.executeQuery(
+    //     tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? AND isPrincipal = 1`, [body.idProducto]
+    //   );
+
+    //   let principal = principalExists ? 0 : 1; // Si ya existe una principal, las nuevas no lo serán
+
+    //   for (const file of files) {
+    //     const rows = await this.databaseService.executeQuery(tenant, `
+    //           SELECT idFoto FROM fotosproductos ORDER BY idFoto DESC limit 1;`, []);
+    //     const lastIdFoto = rows.length > 0 ? rows[0].idFoto : "FPRD0000";
+    //     const idFoto = nextCode(lastIdFoto);
+
+    //     const fotoResult = await this.databaseService.executeQuery(
+    //       tenant,
+    //       `INSERT INTO fotosproductos (idFoto, idProducto, userId, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
+    //       [idFoto, body.idProducto, body.userId]
+    //     );
+
+    //     const upload = await this.uploadToCloudinary(
+    //       file,
+    //       idFoto,
+    //       body.rutaCloudinary,
+    //       body.nuevaRutaCloudinary
+    //     );
+
+    //     await this.databaseService.executeQuery(
+    //       tenant,
+    //       `UPDATE fotosproductos SET url_foto = ?, isPrincipal = ?, rutaCloudinary = ? WHERE idFoto = ?`,
+    //       [upload.secure_url, principal, body.nuevaRutaCloudinary, idFoto]
+    //     );
+    //   }
+
+
+    //   // Siempre actualizamos la fecha
+    //   updateFields.push("updated_at = NOW()");
+
+    //   // Agregamos el ID del usuario al final
+    //   updateValues.push(body.idProducto);
+
+    //   // Construimos la consulta dinámica
+    //   const sql = `
+    //       UPDATE productos 
+    //       SET ${updateFields.join(", ")} 
+    //       WHERE idProducto = ?`;
+    //   console.log("sql: ", sql)
+    //   console.log("values: ", updateValues)
+    //   const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
+
+    //   return {
+    //     message: 'producto actualizado exitosamente',
+    //     result,
+    //   };
+    // }
   }
 
   async saveOrUpdateCategorie(tenant: string, body: CategorieDto): Promise<any> {
@@ -476,13 +386,18 @@ export class AdminService {
           p.cantidad,
           cl.idColor,
           cl.color,
-          p.descripcion, 
-          p.imagen,
+          p.descripcion,
           p.destacado,
           p.nuevo, 
           p.masVendido, 
-          p.activo, 
-          GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
+          p.activo,
+          JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'idFoto', fp.idFoto,
+              'url_foto', fp.url_foto,
+              'isPrincipal', fp.isPrincipal
+            )
+          ) AS fotos
         FROM productos p
         LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
         LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
