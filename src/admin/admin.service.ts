@@ -58,21 +58,21 @@ export class AdminService {
 
   async getAllSubCategories(tenant: string): Promise<any> {
     const subCategories = await this.databaseService.executeQuery(tenant, `
-      SELECT idSubCategoria, subCategoria FROM subcategorias;`);
+      SELECT idSubCategoria, subCategoria, activo FROM subcategorias;`);
 
     return subCategories || null;
   }
 
   async getAllBrands(tenant: string): Promise<any> {
     const brands = await this.databaseService.executeQuery(tenant, `
-      SELECT idMarca, marca FROM marcas;`);
+      SELECT idMarca, marca, activo FROM marcas;`);
 
     return brands || null;
   }
 
   async getAllColors(tenant: string): Promise<any> {
     const colors = await this.databaseService.executeQuery(tenant, `
-      SELECT idColor, color FROM colores;`);
+      SELECT idColor, color, activo FROM colores;`);
 
     return colors || null;
   }
