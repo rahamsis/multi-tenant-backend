@@ -51,7 +51,7 @@ export class AdminService {
 
   async getAllCategories(tenant: string): Promise<any> {
     const categories = await this.databaseService.executeQuery(tenant, `
-      SELECT idCategoria, categoria FROM categorias;`);
+      SELECT idCategoria, categoria, activo FROM categorias;`);
 
     return categories || null;
   }
@@ -163,8 +163,8 @@ export class AdminService {
 
       if (categories.length > 0) {
         const result = await this.databaseService.executeQuery(tenant, `
-      UPDATE categorias SET categoria = ?, SET updated_at = NOW() WHERE idCategoria = ?;`,
-          [body.categoria, body.idCategoria]);
+          UPDATE categorias SET categoria = ?, userId = ?, updated_at = NOW() WHERE idCategoria = ?;`,
+          [body.categoria, body.userId, body.idCategoria]);
 
         return {
           message: 'Categoria actualizada exitosamente',
@@ -179,8 +179,8 @@ export class AdminService {
     const idCategoria = this.util.nextCode(lastIdCategoria);
 
     const result = await this.databaseService.executeQuery(tenant, `
-      INSERT INTO categorias (idCategoria, categoria, userId, created_at, updated_at)
-      VALUES (?, ?, ?, NOW(), NOW());`,
+      INSERT INTO categorias (idCategoria, categoria, userId, activo, created_at, updated_at)
+      VALUES (?, ?, ?, 1, NOW(), NOW());`,
       [idCategoria, body.categoria, body.userId]);
 
     return {
@@ -196,7 +196,7 @@ export class AdminService {
 
       if (subcategories.length > 0) {
         const result = await this.databaseService.executeQuery(tenant, `
-      UPDATE subcategorias SET subCategoria = ?, SET updated_at = NOW() WHERE idSubCategoria = ?;`,
+      UPDATE subcategorias SET subCategoria = ?, updated_at = NOW() WHERE idSubCategoria = ?;`,
           [body.subCategoria, body.idSubCategoria]);
 
         return {
@@ -230,7 +230,7 @@ export class AdminService {
 
       if (marcas.length > 0) {
         const result = await this.databaseService.executeQuery(tenant, `
-      UPDATE marcas SET marca = ?, SET updated_at = NOW() WHERE idMarca = ?;`,
+      UPDATE marcas SET marca = ?, updated_at = NOW() WHERE idMarca = ?;`,
           [body.marca, body.idMarca]);
 
         return {
@@ -264,7 +264,7 @@ export class AdminService {
 
       if (colors.length > 0) {
         const result = await this.databaseService.executeQuery(tenant, `
-      UPDATE colores SET color = ?, SET updated_at = NOW() WHERE idColor = ?;`,
+      UPDATE colores SET color = ?, updated_at = NOW() WHERE idColor = ?;`,
           [body.color, body.idColor]);
 
         return {
