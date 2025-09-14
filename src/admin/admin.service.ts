@@ -329,4 +329,36 @@ export class AdminService {
 
     return nuevosProductos || null;
   }
+
+  async updateStatusCategorie(tenant: string, body: { idCategoria: number, status: number }): Promise<any> {
+    const updatecategorie = await this.databaseService.executeQuery(tenant, `
+        UPDATE categorias SET activo = ? WHERE idCategoria = ?
+        `, [body.status, body.idCategoria])
+
+    return updatecategorie || null;
+  }
+
+  async updateStatusSubCategorie(tenant: string, body: { idSubCategoria: number, status: number }): Promise<any> {
+    const updatesubcategorie = await this.databaseService.executeQuery(tenant, `
+        UPDATE subcategorias SET activo = ? WHERE idSubCategoria = ?
+        `, [body.status, body.idSubCategoria])
+
+    return updatesubcategorie || null;
+  }
+
+  async updateStatusBrand(tenant: string, body: { idMarca: number, status: number }): Promise<any> {
+    const updatecategorie = await this.databaseService.executeQuery(tenant, `
+        UPDATE marcas SET activo = ? WHERE idMarca = ?
+        `, [body.status, body.idMarca])
+
+    return updatecategorie || null;
+  }
+
+  async updateStatusColor(tenant: string, body: { idColor: number, status: number }): Promise<any> {
+    const updatecolor = await this.databaseService.executeQuery(tenant, `
+        UPDATE colores SET activo = ? WHERE idColor = ?
+        `, [body.status, body.idColor])
+
+    return updatecolor || null;
+  }
 }

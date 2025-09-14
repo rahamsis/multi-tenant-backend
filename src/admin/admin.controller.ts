@@ -207,4 +207,64 @@ export class AdminController {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
     }
   }
+
+  @Put('/update-status-categorie')
+  async updateStatusCategorie(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: { idCategoria: number, status: number }
+  ) {
+    try {
+      const data = await this.adminService.updateStatusCategorie(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Put('/update-status-subcategorie')
+  async updateStatusSubCategorie(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: { idSubCategoria: number, status: number }
+  ) {
+    try {
+      const data = await this.adminService.updateStatusSubCategorie(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Put('/update-status-brand')
+  async updateStatusBrand(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: { idMarca: number, status: number }
+  ) {
+    try {
+      const data = await this.adminService.updateStatusBrand(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Put('/update-status-color')
+  async updateStatusColor(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: { idColor: number, status: number }
+  ) {
+    try {
+      const data = await this.adminService.updateStatusColor(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
 }
