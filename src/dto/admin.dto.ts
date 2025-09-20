@@ -26,6 +26,7 @@ export class NewProductDto {
     idColor: string;
     nombre: string;
     precio: number;
+    cantidad: number;
     descripcion: string;
     destacado: boolean;
     nuevo: boolean;
@@ -35,11 +36,23 @@ export class NewProductDto {
     fotoDeleted: FotoDeleted[];
     rutaCloudinary: string;
     nuevaRutaCloudinary: string;
+
+    tipo: number;
+    packItemsToAdd: ProductPackItemDto[];
+    packItemsToRemove: ProductPackItemDto[];
+    packItemsToUpdate: ProductPackItemDto[];
 }
 
 export class FotoDeleted {
     idFoto: string;
     isPrincipal: boolean;
+}
+
+export class ProductPackItemDto {
+    idProductoPaquete?: string;
+    idPaquete?: string;
+    idProducto?: string;
+    cantidad?: number;
 }
 
 export class CategorieDto {

@@ -93,13 +93,13 @@ export class AdminService {
 
     // 1. Subir nuevas imágenes
     if (files?.length) {
-      await this.util.addNewProductImages(tenant, files, body);
+      await this.util.addNewProductImages(tenant, files, idProducto, body.userId, body.nuevaRutaCloudinary);
     }
 
     const result = await this.databaseService.executeQuery(tenant, `
-      INSERT INTO productos (idProducto, idCategoria, idSubCategoria, idMarca, nombre, precio, idColor, 
-      descripcion, destacado, nuevo, masVendido, activo, userId, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());`,
+      INSERT INTO productos (idProducto, idCategoria, idSubCategoria, idMarca, nombre, precio, cantidad, idColor, 
+      descripcion, tipo, destacado, nuevo, masVendido, activo, userId, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());`,
       [
         idProducto,
         body.idCategoria,
@@ -107,13 +107,38 @@ export class AdminService {
         body.idMarca,
         body.nombre,
         body.precio,
+        body.cantidad,
         body.idColor,
         body.descripcion,
+        body.tipo,
         body.destacado,
         body.nuevo,
         body.masVendido,
         body.activo ? 1 : 0,
         body.userId]);
+
+    // Parse packItemsToAdd, packItemsToRemove y packItemsToUpdate to ensure it's an array
+    this.util.parsePackItems(body);
+
+    // añadimos el paquete en caso tuviera
+    if (body.packItemsToAdd && body.packItemsToAdd.length) {
+      for (const item of body.packItemsToAdd) {
+        const rowPaquetes = await this.databaseService.executeQuery(tenant, `
+        SELECT idProductoPaquete FROM productospaquete ORDER BY idProductoPaquete DESC limit 1;`, []);
+        const lastIdProductoPaquete = (rowPaquetes.length > 0 && rowPaquetes[0].idProductoPaquete) ? rowPaquetes[0].idProductoPaquete : "PRPQ0000";
+        const newIdProductoPaquete = this.util.nextCode(lastIdProductoPaquete);
+
+        await this.databaseService.executeQuery(tenant, `
+          INSERT INTO productospaquete (idProductoPaquete, idPaquete, idProducto, cantidad, userId, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, NOW(), NOW());`,
+          [newIdProductoPaquete,
+            idProducto,
+            item.idProducto,
+            item.cantidad,
+            body.userId
+          ]);
+      }
+    }
 
     return {
       message: 'Producto creado exitosamente',
@@ -125,6 +150,8 @@ export class AdminService {
 
     // Parse fotoDeleted to ensure it's an array
     this.util.parseFotoDeleted(body);
+    // Parse packItemsToAdd, packItemsToRemove y packItemsToUpdate to ensure it's an array
+    this.util.parsePackItems(body);
 
     // 1. Actualizar campos del producto
     const { updateFields, updateValues } = this.util.buildUpdateFields(body);
@@ -141,13 +168,51 @@ export class AdminService {
 
     // 4. Subir nuevas imágenes
     if (files?.length) {
-      await this.util.addNewProductImages(tenant, files, body);
+      await this.util.addNewProductImages(tenant, files, body.idProducto, body.userId, body.nuevaRutaCloudinary);
     }
-
+    console.log(updateFields)
     // 5. Actualizar producto
     const sql = `UPDATE productos SET ${updateFields.join(", ")}, updated_at = NOW() WHERE idProducto = ?`;
     updateValues.push(body.idProducto);
     const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
+
+    // 6. Actualizamos paquetesproductos según sea necesario
+    // 6.1 eliminamos el productos del paquete en caso tuviera
+    if (body.packItemsToRemove && body.packItemsToRemove.length) {
+      for (const item of body.packItemsToRemove) {
+        await this.databaseService.executeQuery(tenant, `
+        DELETE FROM productospaquete WHERE idProductoPaquete = ? and idPaquete = ?;`,
+          [item.idProductoPaquete, item.idPaquete]);
+      }
+    }
+
+    // 6.2 actualizamos el producto del paquete en caso tuviera
+    if (body.packItemsToUpdate && body.packItemsToUpdate.length) {
+      for (const item of body.packItemsToUpdate) {
+        await this.databaseService.executeQuery(tenant, `
+        UPDATE productospaquete SET cantidad = ? WHERE idProductoPaquete = ? and  idPaquete = ?;`,
+          [item.cantidad, item.idProductoPaquete, item.idPaquete]);
+      }
+    }
+    // 6.3 añadimos el paquete en caso tuviera
+    if (body.packItemsToAdd && body.packItemsToAdd.length) {
+      for (const item of body.packItemsToAdd) {
+        const rowPaquetes = await this.databaseService.executeQuery(tenant, `
+        SELECT idProductoPaquete FROM productospaquete ORDER BY idProductoPaquete DESC limit 1;`, []);
+        const lastIdProductoPaquete = (rowPaquetes.length > 0 && rowPaquetes[0].idProductoPaquete) ? rowPaquetes[0].idProductoPaquete : "PRPQ0000";
+        const newIdProductoPaquete = this.util.nextCode(lastIdProductoPaquete);
+
+        await this.databaseService.executeQuery(tenant, `
+          INSERT INTO productospaquete (idProductoPaquete, idPaquete, idProducto, cantidad, userId, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, NOW(), NOW());`,
+          [newIdProductoPaquete,
+            body.idProducto,
+            item.idProducto,
+            item.cantidad,
+            body.userId
+          ]);
+      }
+    }
 
     return {
       message: "producto actualizado exitosamente",
@@ -293,39 +358,64 @@ export class AdminService {
   async getProductById(tenant: string, idProducto: string): Promise<any> {
     const nuevosProductos = await this.databaseService.executeQuery(tenant, `
         SELECT 
-          p.idProducto,
-          c.idCategoria,
-          c.categoria,
-          sc.idSubCategoria,
-          sc.subCategoria,
-          m.idMarca,
-          m.marca, 
-          p.nombre,
-          p.precio,
-          p.cantidad,
-          cl.idColor,
-          cl.color,
-          p.descripcion,
-          p.destacado,
-          p.nuevo, 
-          p.masVendido, 
-          p.activo,
-          JSON_ARRAYAGG(
-            JSON_OBJECT(
-              'idFoto', fp.idFoto,
-              'url_foto', fp.url_foto,
-              'isPrincipal', fp.isPrincipal
-            )
-          ) AS fotos
-        FROM productos p
-        LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
-        LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
-        LEFT JOIN marcas m ON p.idMarca = m.idMarca
-        LEFT JOIN colores cl ON p.idColor = cl.idColor
-        LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
-        WHERE p.idProducto = ?
-        GROUP BY p.idProducto
-        ORDER BY p.idProducto;`, [idProducto]);
+        p.idProducto,
+        c.idCategoria,
+        c.categoria,
+        sc.idSubCategoria,
+        sc.subCategoria,
+        m.idMarca,
+        m.marca,
+        p.nombre,
+        p.precio,
+        p.tipo,
+        p.cantidad,
+        cl.idColor,
+        cl.color,
+        p.descripcion,
+        p.destacado,
+        p.nuevo,
+        p.masVendido,
+        p.activo,
+        -- fotos: subconsulta correlacionada
+        (
+          SELECT COALESCE(
+            JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'idFoto', fp.idFoto,
+                'url_foto', fp.url_foto,
+                'isPrincipal', fp.isPrincipal
+              )
+            ),
+            JSON_ARRAY()
+          )
+          FROM fotosproductos fp
+          WHERE fp.idProducto = p.idProducto
+        ) AS fotos,
+        -- productos del paquete: subconsulta correlacionada
+        (
+          SELECT COALESCE(
+            JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'idProductoPaquete', pp.idProductoPaquete,
+                'idPaquete', pp.idPaquete,
+                'idProducto', pp.idProducto,
+                  'nombre', p.nombre,
+                  'imagen', fp.url_foto,
+                'cantidad', pp.cantidad
+              )
+            ),
+            JSON_ARRAY()
+          )
+          FROM productospaquete pp
+          LEFT JOIN fotosproductos fp ON fp.idProducto = pp.idProducto
+          WHERE pp.idPaquete = p.idProducto
+        ) AS productospaquete
+      FROM productos p
+      LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
+      LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
+      LEFT JOIN marcas m ON p.idMarca = m.idMarca
+      LEFT JOIN colores cl ON p.idColor = cl.idColor
+      WHERE p.idProducto = ?;`, [idProducto]);
 
     return nuevosProductos || null;
   }

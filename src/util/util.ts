@@ -31,7 +31,13 @@ export class Util {
     const updateValues: any[] = [];
 
     Object.keys(body).forEach((key) => {
-      if (["imagen", "rutaCloudinary", "nuevaRutaCloudinary", "fotoDeleted"].includes(key)) return;
+      if (["imagen",
+        "rutaCloudinary",
+        "nuevaRutaCloudinary",
+        "fotoDeleted",
+        "packItemsToAdd",
+        "packItemsToRemove",
+        "packItemsToUpdate"].includes(key)) return;
 
       const value = body[key as keyof NewProductDto];
       if (value !== null && value !== "null" && value !== undefined && value !== "") {
@@ -53,6 +59,38 @@ export class Util {
       }
     } else if (Array.isArray(body.fotoDeleted)) {
       body.fotoDeleted = body.fotoDeleted;
+    }
+  }
+
+  parsePackItems(body: NewProductDto): void {
+    try {
+      if (typeof body.packItemsToAdd === 'string') {
+        body.packItemsToAdd = JSON.parse(body.packItemsToAdd);
+      }
+
+      if (typeof body.packItemsToRemove === 'string') {
+        body.packItemsToRemove = JSON.parse(body.packItemsToRemove);
+      }
+
+      if (typeof body.packItemsToUpdate === 'string') {
+        body.packItemsToUpdate = JSON.parse(body.packItemsToUpdate);
+      }
+    } catch {
+      body.packItemsToAdd = [];
+      body.packItemsToRemove = [];
+      body.packItemsToUpdate = [];
+    }
+
+    if (!Array.isArray(body.packItemsToAdd)) {
+      body.packItemsToAdd = [];
+    }
+
+    if (!Array.isArray(body.packItemsToRemove)) {
+      body.packItemsToRemove = [];
+    }
+
+    if (!Array.isArray(body.packItemsToUpdate)) {
+      body.packItemsToUpdate = [];
     }
   }
 
@@ -105,9 +143,9 @@ export class Util {
     }
   }
 
-  async addNewProductImages(tenant: string, files: Express.Multer.File[], body: NewProductDto) {
+  async addNewProductImages(tenant: string, files: Express.Multer.File[], idProducto: string, userId: string, nuevaRutaCloudinary: string) {
     const principalExists = await this.databaseService.executeQuery(
-      tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? AND isPrincipal = 1`, [body.idProducto]
+      tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? AND isPrincipal = 1`, [idProducto]
     );
 
     let isPrincipalAssigned = principalExists.length > 0;
@@ -120,10 +158,10 @@ export class Util {
       await this.databaseService.executeQuery(
         tenant,
         `INSERT INTO fotosproductos (idFoto, idProducto, userId, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
-        [idFoto, body.idProducto, body.userId]
+        [idFoto, idProducto, userId]
       );
 
-      const upload = await this.cloudinaryUtil.uploadToCloudinary(file, idFoto, body.nuevaRutaCloudinary);
+      const upload = await this.cloudinaryUtil.uploadToCloudinary(file, idFoto, nuevaRutaCloudinary);
 
       // Solo asignamos principal a la primera foto nueva si no hay ninguna existente
       const principal = !isPrincipalAssigned && index === 0 ? 1 : 0;
@@ -131,7 +169,7 @@ export class Util {
       await this.databaseService.executeQuery(
         tenant,
         `UPDATE fotosproductos SET url_foto = ?, isPrincipal = ?, rutaCloudinary = ? WHERE idFoto = ?`,
-        [upload.secure_url, principal, body.nuevaRutaCloudinary, idFoto]
+        [upload.secure_url, principal, nuevaRutaCloudinary, idFoto]
       );
     }
   }
