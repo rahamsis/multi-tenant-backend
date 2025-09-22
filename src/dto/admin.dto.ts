@@ -38,9 +38,9 @@ export class NewProductDto {
     nuevaRutaCloudinary: string;
 
     tipo: number;
-    packItemsToAdd: ProductPackItemDto[];
-    packItemsToRemove: ProductPackItemDto[];
-    packItemsToUpdate: ProductPackItemDto[];
+    packItemsToAdd?: ProductPackItemDto[];
+    packItemsToRemove?: ProductPackItemDto[];
+    packItemsToUpdate?: ProductPackItemDto[];
 }
 
 export class FotoDeleted {
@@ -67,6 +67,7 @@ export class SubCategorieDto {
     idSubCategoria: string;
     subCategoria: string;
     userId: string;
+    idCategoria: string;
     created_at: Date
     updated_at: Date;
 }
@@ -85,4 +86,14 @@ export class ColorDto {
     userId: string;
     created_at: Date
     updated_at: Date;
+}
+
+export class MenuDto {
+    idmenu: string;
+    urlMenu: string;
+    titulo: string;
+    idCategoria: string;
+    userId: string;
+    orden: number;
+    estado: boolean;
 }

@@ -1,9 +1,9 @@
-import { Body, Controller, Get, HttpStatus, Post, Put, Query, Res, Req, Headers, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Post, Put, Query, Res, Req, Headers, UploadedFiles, UseInterceptors, Delete } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Response, } from 'express';
-import { CategorieDto, ColorDto, MarcaDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
+import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
 
 @ApiTags('Admin')
 @Controller()
@@ -163,6 +163,21 @@ export class AdminController {
     }
   }
 
+  @Delete('/delete-subcategorie')
+  async deleteSubCategorie(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: { idSubCategoria: string }
+  ) {
+    try {
+      const data = await this.adminService.deleteSubCategorie(tenant, body.idSubCategoria);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
   @Post('/update-or-save-marca')
   async saveOrUpdateMarca(
     @Headers('x-tenant-id') tenant: string,
@@ -261,6 +276,21 @@ export class AdminController {
   ) {
     try {
       const data = await this.adminService.updateStatusColor(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/save-menu')
+  async saveMenu(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: MenuDto[]
+  ) {
+    try {
+      const data = await this.adminService.saveMenu(tenant, body);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {

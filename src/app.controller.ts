@@ -8,6 +8,20 @@ import { Response, } from 'express';
 export class AppController {
   constructor(private readonly appService: AppService) { }
 
+  @Get('/backendApi/menus')
+  async getMenus(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.appService.getMenus(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
   @Get('/backendApi/features-products')
   async getNewProduct(
     @Query('feature') feature: number,

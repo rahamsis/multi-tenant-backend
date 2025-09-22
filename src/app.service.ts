@@ -5,6 +5,49 @@ import { DatabaseService } from './database/database.service';
 export class AppService {
   constructor(private readonly databaseService: DatabaseService) { }
 
+  async getMenus(tenant: string): Promise<any> {
+    const menus = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        m.idMenu,
+        m.urlMenu,
+        m.titulo,
+        m.idCategoria,
+        m.userId, 
+        m.estado,
+        m.orden,
+        GROUP_CONCAT(sc.subCategoria SEPARATOR ',') AS subMenu
+      FROM menu m
+      LEFT JOIN subcategorias sc ON m.idCategoria = sc.idCategoria
+      GROUP BY 
+        m.idMenu,
+        m.urlMenu,
+        m.titulo,
+        m.idCategoria,
+        m.userId, 
+        m.estado,
+        m.orden
+      ORDER BY m.orden
+      `, []);
+
+    const categorias = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        c.idCategoria, 
+        c.categoria, 
+        c.activo,
+        GROUP_CONCAT(sc.subCategoria SEPARATOR ',') AS subMenu
+      FROM categorias c
+      LEFT JOIN subcategorias sc on c.idCategoria = sc.idCategoria
+      WHERE c.idCategoria NOT IN (SELECT idCategoria FROM menu)
+      GROUP BY 
+        c.idCategoria, 
+        c.categoria, 
+        c.activo
+      ORDER BY c.categoria;
+      `, []);
+
+    return {menus, categorias}  ;
+  }
+
   async getNewProduct(tenant: string, feature: number): Promise<any> {
     const nuevosProductos = await this.databaseService.executeQuery(tenant, `
       SELECT 

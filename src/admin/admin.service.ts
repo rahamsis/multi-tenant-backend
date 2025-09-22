@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { CategorieDto, ColorDto, MarcaDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
+import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
 import { Util } from 'src/util/util';
 
 @Injectable()
@@ -58,7 +58,9 @@ export class AdminService {
 
   async getAllSubCategories(tenant: string): Promise<any> {
     const subCategories = await this.databaseService.executeQuery(tenant, `
-      SELECT idSubCategoria, subCategoria, activo FROM subcategorias;`);
+      SELECT sc.idSubCategoria, sc.subCategoria, sc.activo, c.idCategoria, c.categoria 
+      FROM subcategorias sc
+      LEFT JOIN categorias c on sc.idCategoria = c.idCategoria`);
 
     return subCategories || null;
   }
@@ -170,7 +172,7 @@ export class AdminService {
     if (files?.length) {
       await this.util.addNewProductImages(tenant, files, body.idProducto, body.userId, body.nuevaRutaCloudinary);
     }
-    console.log(updateFields)
+
     // 5. Actualizar producto
     const sql = `UPDATE productos SET ${updateFields.join(", ")}, updated_at = NOW() WHERE idProducto = ?`;
     updateValues.push(body.idProducto);
@@ -261,8 +263,8 @@ export class AdminService {
 
       if (subcategories.length > 0) {
         const result = await this.databaseService.executeQuery(tenant, `
-      UPDATE subcategorias SET subCategoria = ?, updated_at = NOW() WHERE idSubCategoria = ?;`,
-          [body.subCategoria, body.idSubCategoria]);
+          UPDATE subcategorias SET subCategoria = ?, idCategoria = ?,  updated_at = NOW() WHERE idSubCategoria = ?;`,
+          [body.subCategoria, body.idCategoria, body.idSubCategoria]);
 
         return {
           message: 'SubCategoria actualizada exitosamente',
@@ -277,14 +279,34 @@ export class AdminService {
     const idSubCategoria = this.util.nextCode(lastIdSubCategoria);
 
     const result = await this.databaseService.executeQuery(tenant, `
-      INSERT INTO subcategorias (idSubCategoria, subCategoria, userId, created_at, updated_at)
-      VALUES (?, ?, ?, NOW(), NOW());`,
-      [idSubCategoria, body.subCategoria, body.userId]);
+      INSERT INTO subcategorias (idSubCategoria, subCategoria, idCategoria, userId, created_at, updated_at)
+      VALUES (?, ?, ?, ?, NOW(), NOW());`,
+      [idSubCategoria, body.subCategoria, body.idCategoria, body.userId]);
 
     return {
       message: 'SubCategoria creada exitosamente',
       result,
     };
+  }
+
+  async deleteSubCategorie(tenant: string, idSubCategoria: string) {
+    const exist = await this.databaseService.executeQuery(tenant, `
+      SELECT idProducto from productos WHERE idSubCategoria = ?`, [idSubCategoria]);
+
+    if (exist.length > 0) {
+      return {
+        message: "No se pudo eliminar, hay productos asociados",
+      }
+    } else {
+      const result = await this.databaseService.executeQuery(tenant, `
+      DELETE from subcategorias WHERE idSubCategoria = ?`, [idSubCategoria]);
+
+      return {
+        message: "sub categoria eliminada correctamente",
+        result
+      }
+    }
+
   }
 
   async saveOrUpdateMarca(tenant: string, body: MarcaDto): Promise<any> {
@@ -450,5 +472,42 @@ export class AdminService {
         `, [body.status, body.idColor])
 
     return updatecolor || null;
+  }
+
+  async saveMenu(tenant: string, body: MenuDto[]): Promise<any> {
+
+    await this.databaseService.executeQuery(tenant, `DELETE FROM menu;`, []);
+
+    let lastIdMenu = "MENU0000";
+
+    for (const item of body) {
+       lastIdMenu = this.util.nextCode(lastIdMenu);
+
+      const result = await this.databaseService.executeQuery(tenant, `
+      INSERT INTO menu (
+        idMenu, 
+        urlMenu, 
+        titulo, 
+        idCategoria,
+        userId,
+        orden,
+        estado,
+        created_at, 
+        updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW());`,
+        [
+          lastIdMenu,
+          item.urlMenu,
+          item.titulo,
+          item.idCategoria,
+          item.userId,
+          item.orden,
+          item.estado
+        ]);
+    }
+
+    return {
+      status: 200,
+    };
   }
 }

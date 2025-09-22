@@ -100,12 +100,12 @@ export class Util {
     );
 
     for (const foto of fotos) {
-      await this.cloudinaryUtil.moveImage(body.rutaCloudinary, body.nuevaRutaCloudinary, foto.idFoto);
+      const url_secure = await this.cloudinaryUtil.moveImage(body.rutaCloudinary, body.nuevaRutaCloudinary, foto.idFoto);
 
       await this.databaseService.executeQuery(
         tenant,
-        `UPDATE fotosproductos SET rutaCloudinary = ? WHERE idFoto = ?`,
-        [body.nuevaRutaCloudinary, foto.idFoto]
+        `UPDATE fotosproductos SET rutaCloudinary = ?, url_foto = ? WHERE idFoto = ?`,
+        [body.nuevaRutaCloudinary, url_secure, foto.idFoto]
       );
     }
   }
