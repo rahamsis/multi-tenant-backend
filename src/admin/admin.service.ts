@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
+import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
 import { Util } from 'src/util/util';
 
 @Injectable()
@@ -481,7 +481,7 @@ export class AdminService {
     let lastIdMenu = "MENU0000";
 
     for (const item of body) {
-       lastIdMenu = this.util.nextCode(lastIdMenu);
+      lastIdMenu = this.util.nextCode(lastIdMenu);
 
       const result = await this.databaseService.executeQuery(tenant, `
       INSERT INTO menu (
@@ -509,5 +509,41 @@ export class AdminService {
     return {
       status: 200,
     };
+  }
+
+  async getWebSite(tenant: string): Promise<any> {
+    const empresa = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        e.idEmpresa, 
+        e.nombre, 
+        e.telefonoPrincipal, 
+        e.telefonoSecundario, 
+        e.direccionPrincipal, 
+        e.direccionSecundaria, 
+        e.correo
+      FROM empresa e`);
+
+    return empresa || null;
+  }
+
+  async updateWebSite(tenant: string, body: WebSite): Promise<any> {
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+
+    Object.keys(body).forEach((key) => {
+      if (["nombre", "idEmpresa"].includes(key)) return;
+
+      const value = body[key as keyof WebSite];
+      if (value != null && value != "null" && value !== undefined && value !== "") {
+        updateFields.push(`${key} = ?`);
+        updateValues.push(value)
+      }
+    })
+
+    const sql = `UPDATE empresa SET ${updateFields.join(", ")}, updated_at = NOW() WHERE idEmpresa = ?`;
+    updateValues.push(body.idEmpresa);
+    const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
+
+    return result || null
   }
 }

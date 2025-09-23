@@ -3,7 +3,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Response, } from 'express';
-import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewProductDto, ProductDto, SubCategorieDto } from 'src/dto/admin.dto';
+import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
 
 @ApiTags('Admin')
 @Controller()
@@ -291,6 +291,35 @@ export class AdminController {
   ) {
     try {
       const data = await this.adminService.saveMenu(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Get('/get-website')
+  async getWebsite(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.adminService.getWebSite(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/update-website')
+  async updateWebSite(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: WebSite
+  ) {
+    try {
+      const data = await this.adminService.updateWebSite(tenant, body);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {

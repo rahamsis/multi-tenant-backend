@@ -97,3 +97,14 @@ export class MenuDto {
     orden: number;
     estado: boolean;
 }
+
+export class WebSite {
+    idEmpresa: string;
+    nombre: string;
+    telefonoPrincipal: string;
+    telefonoSecundario: string;
+    direccionPrincipal: string;
+    direccionSecundaria: string;
+    correo: string;
+    userId: string;
+}
