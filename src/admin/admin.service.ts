@@ -405,6 +405,7 @@ export class AdminService {
               JSON_OBJECT(
                 'idFoto', fp.idFoto,
                 'url_foto', fp.url_foto,
+                'rutaCloudinary', fp.rutaCloudinary,
                 'isPrincipal', fp.isPrincipal
               )
             ),

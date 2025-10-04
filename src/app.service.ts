@@ -45,7 +45,7 @@ export class AppService {
       ORDER BY c.categoria;
       `, []);
 
-    return {menus, categorias}  ;
+    return { menus, categorias };
   }
 
   async getNewProduct(tenant: string, feature: number): Promise<any> {
@@ -86,7 +86,8 @@ export class AppService {
     return nuevosProductos || null;
   }
 
-  async getProductByCategory(tenant: string, category: string): Promise<any> {
+  async getProductByCategory(tenant: string, category: string, subcategory: string | null): Promise<any> {
+    const subcategoryParam = subcategory && subcategory.toLowerCase() !== "null" ? subcategory : null;
     const productos = await this.databaseService.executeQuery(tenant, `
       SELECT 
         p.idProducto, 
@@ -113,8 +114,9 @@ export class AppService {
       LEFT JOIN colores cl ON p.idColor = cl.idColor
       LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
       WHERE LOWER(c.categoria) = LOWER(?) and p.activo = 1
+      AND ( ? IS NULL OR LOWER(sc.subCategoria) = LOWER(?) )
       GROUP BY p.idProducto
-      ORDER BY p.idProducto ASC;`, [category]);
+      ORDER BY p.idProducto ASC;`, [category, subcategoryParam, subcategoryParam]);
 
     return productos || null;
   }

@@ -40,11 +40,12 @@ export class AppController {
   @Get('/backendApi/product-by-category')
   async getProductByCategory(
     @Query('category') category: string,
+    @Query('subcategory') subcategory: string | null,
     @Headers('x-tenant-id') tenant: string,
     @Res() res: Response,
   ) {
     try {
-      const data = await this.appService.getProductByCategory(tenant, category);
+      const data = await this.appService.getProductByCategory(tenant, category, subcategory);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
