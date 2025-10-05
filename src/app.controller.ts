@@ -37,6 +37,34 @@ export class AppController {
     }
   }
 
+  @Get('/backendApi/all-products')
+  async getAllProduct(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.appService.getAllProduct(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+  
+  @Get('/backendApi/all-brands')
+  async getAllBrands(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.appService.getAllBrands(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
   @Get('/backendApi/product-by-category')
   async getProductByCategory(
     @Query('category') category: string,

@@ -86,6 +86,51 @@ export class AppService {
     return nuevosProductos || null;
   }
 
+  async getAllProduct(tenant: string): Promise<any> {
+    const nuevosProductos = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        p.idProducto, 
+        c.idCategoria,
+        c.categoria,
+        sc.idSubCategoria,
+        sc.subCategoria,
+        m.idMarca,
+        m.marca, 
+        p.nombre,
+        p.precio,
+        cl.idColor,
+        cl.color,
+        p.descripcion,
+        p.destacado,
+        p.nuevo, 
+        p.masVendido, 
+        p.activo, 
+        GROUP_CONCAT(DISTINCT fp.url_foto ORDER BY fp.idFoto SEPARATOR ',') AS fotosAdicionales
+      FROM productos p
+      LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
+      LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
+      LEFT JOIN marcas m ON p.idMarca = m.idMarca
+      LEFT JOIN colores cl ON p.idColor = cl.idColor
+      LEFT JOIN fotosproductos fp ON p.idProducto = fp.idProducto
+      WHERE p.activo = 1 
+      GROUP BY p.idProducto;`, []);
+
+    return nuevosProductos || null;
+  }
+
+  async getAllBrands(tenant: string): Promise<any> {
+    const nuevosProductos = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        m.idMarca,
+        m.marca,
+        m.urlFoto,
+        m.activo
+      FROM marcas m
+      WHERE m.activo = 1;`, []);
+
+    return nuevosProductos || null;
+  }
+
   async getProductByCategory(tenant: string, category: string, subcategory: string | null): Promise<any> {
     const subcategoryParam = subcategory && subcategory.toLowerCase() !== "null" ? subcategory : null;
     const productos = await this.databaseService.executeQuery(tenant, `
