@@ -158,6 +158,7 @@ export class AdminService {
     // 1. Actualizar campos del producto
     const { updateFields, updateValues } = this.util.buildUpdateFields(body);
 
+    console.error("DEBUG FOTO DELETED: ", body.fotoDeleted, Array.isArray(body.fotoDeleted), body.fotoDeleted.length);
     // 2. Eliminar imágenes si corresponde
     if (body.fotoDeleted.length) {
       console.error("entro: ", body.fotoDeleted.length)
