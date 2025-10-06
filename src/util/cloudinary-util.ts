@@ -14,6 +14,7 @@ export class CloudinaryUtil {
     }
 
     async uploadToCloudinary(file: Express.Multer.File, id: string, newFolder: string): Promise<any> {
+        console.error("datos: ", id, newFolder)
         return new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
@@ -23,7 +24,10 @@ export class CloudinaryUtil {
                     invalidate: true     // 👈 limpia caché CDN de Cloudinary
                 },
                 (error, result) => {
-                    if (error) return reject(error);
+                    if (error) {
+                        console.error("❌ Error al subir a Cloudinary:", error);
+                        return reject(error);
+                    }
                     resolve(result);
                 },
             );
