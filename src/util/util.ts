@@ -163,10 +163,10 @@ export class Util {
       );
 
       const upload = await this.cloudinaryUtil.uploadToCloudinary(file, idFoto, nuevaRutaCloudinary);
-      console.log(upload)
+
       // Solo asignamos principal a la primera foto nueva si no hay ninguna existente
       const principal = !isPrincipalAssigned && index === 0 ? 1 : 0;
-      console.log('datos', upload.secure_url, principal, nuevaRutaCloudinary, idFoto)
+
       await this.databaseService.executeQuery(
         tenant,
         `UPDATE fotosproductos SET url_foto = ?, isPrincipal = ?, rutaCloudinary = ? WHERE idFoto = ?`,

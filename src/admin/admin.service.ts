@@ -160,7 +160,7 @@ export class AdminService {
 
     console.error("DEBUG FOTO DELETED: ", body.fotoDeleted, Array.isArray(body.fotoDeleted), body.fotoDeleted.length);
     // 2. Eliminar imágenes si corresponde
-    if (body.fotoDeleted.length) {
+    if (body.fotoDeleted.length && body.fotoDeleted.length > 0) {
       console.error("entro: ", body.fotoDeleted.length)
       await this.util.deleteProductImages(tenant, body);
     }
@@ -171,7 +171,7 @@ export class AdminService {
     }
 
     // 4. Subir nuevas imágenes
-    if (files?.length) {
+    if (files?.length && files?.length > 0) {
       await this.util.addNewProductImages(tenant, files, body.idProducto, body.userId, body.nuevaRutaCloudinary);
     }
 
