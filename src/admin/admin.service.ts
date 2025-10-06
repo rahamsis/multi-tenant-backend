@@ -158,7 +158,6 @@ export class AdminService {
     // 1. Actualizar campos del producto
     const { updateFields, updateValues } = this.util.buildUpdateFields(body);
 
-    console.error("DEBUG FOTO DELETED: ", body.fotoDeleted, Array.isArray(body.fotoDeleted), body.fotoDeleted.length);
     // 2. Eliminar imágenes si corresponde
     if (body.fotoDeleted.length && body.fotoDeleted.length > 0) {
       console.error("entro: ", body.fotoDeleted.length)
@@ -182,7 +181,7 @@ export class AdminService {
 
     // 6. Actualizamos paquetesproductos según sea necesario
     // 6.1 eliminamos el productos del paquete en caso tuviera
-    if (body.packItemsToRemove && body.packItemsToRemove.length) {
+    if (body.packItemsToRemove && body.packItemsToRemove.length > 0) {
       for (const item of body.packItemsToRemove) {
         await this.databaseService.executeQuery(tenant, `
         DELETE FROM productospaquete WHERE idProductoPaquete = ? and idPaquete = ?;`,
@@ -191,7 +190,7 @@ export class AdminService {
     }
 
     // 6.2 actualizamos el producto del paquete en caso tuviera
-    if (body.packItemsToUpdate && body.packItemsToUpdate.length) {
+    if (body.packItemsToUpdate && body.packItemsToUpdate.length > 0) {
       for (const item of body.packItemsToUpdate) {
         await this.databaseService.executeQuery(tenant, `
         UPDATE productospaquete SET cantidad = ? WHERE idProductoPaquete = ? and  idPaquete = ?;`,
@@ -199,7 +198,7 @@ export class AdminService {
       }
     }
     // 6.3 añadimos el paquete en caso tuviera
-    if (body.packItemsToAdd && body.packItemsToAdd.length) {
+    if (body.packItemsToAdd && body.packItemsToAdd.length > 0) {
       for (const item of body.packItemsToAdd) {
         const rowPaquetes = await this.databaseService.executeQuery(tenant, `
         SELECT idProductoPaquete FROM productospaquete ORDER BY idProductoPaquete DESC limit 1;`, []);
