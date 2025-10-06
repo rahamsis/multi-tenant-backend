@@ -50,17 +50,18 @@ export class Util {
   }
 
   parseFotoDeleted(body: NewProductDto): void {
-    // let fotoDeletedArray: FotoDeleted[] = [];
     if (typeof body.fotoDeleted === 'string') {
       try {
-        body.fotoDeleted = JSON.parse(body.fotoDeleted);
+        const parsed = JSON.parse(body.fotoDeleted);
+        body.fotoDeleted = Array.isArray(parsed) ? parsed : [];
       } catch {
         body.fotoDeleted = [];
       }
-    } else if (Array.isArray(body.fotoDeleted)) {
-      body.fotoDeleted = body.fotoDeleted;
+    } else if (!Array.isArray(body.fotoDeleted)) {
+      body.fotoDeleted = [];
     }
   }
+
 
   parsePackItems(body: NewProductDto): void {
     try {
