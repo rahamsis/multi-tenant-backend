@@ -160,7 +160,7 @@ export class AdminService {
 
     // 2. Eliminar imágenes si corresponde
     if (body.fotoDeleted.length) {
-      console.log("entro: ", body.fotoDeleted.length)
+      console.error("entro: ", body.fotoDeleted.length)
       await this.util.deleteProductImages(tenant, body);
     }
 
