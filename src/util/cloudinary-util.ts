@@ -48,7 +48,7 @@ export class CloudinaryUtil {
                     return reject(new Error("Buffer vacío o inválido"));
                 }
 
-                console.log("🔹 Subiendo archivo a Cloudinary:", id, newFolder, "Tamaño:", file.buffer.length);
+                // console.log("🔹 Subiendo archivo a Cloudinary:", id, newFolder, "Tamaño:", file.buffer.length);
 
                 // Crear stream de subida
                 const uploadStream = cloudinary.uploader.upload_stream(
@@ -67,7 +67,7 @@ export class CloudinaryUtil {
                             console.error("❌ No se recibió respuesta de Cloudinary");
                             return reject(new Error("No se recibió respuesta de Cloudinary"));
                         }
-                        console.log("✅ Imagen subida correctamente:", result.secure_url);
+                        // console.log("✅ Imagen subida correctamente:", result.secure_url);
                         resolve(result);
                     }
                 );
