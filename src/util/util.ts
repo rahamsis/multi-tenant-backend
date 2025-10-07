@@ -148,7 +148,7 @@ export class Util {
     const principalExists = await this.databaseService.executeQuery(
       tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? AND isPrincipal = 1`, [idProducto]
     );
-    console.error("entro", principalExists)
+
     let isPrincipalAssigned = principalExists.length > 0;
 
     for (const [index, file] of files.entries()) {
@@ -166,7 +166,6 @@ export class Util {
 
       // Solo asignamos principal a la primera foto nueva si no hay ninguna existente
       const principal = !isPrincipalAssigned && index === 0 ? 1 : 0;
-      console.error("upload", upload.secure_url, principal, nuevaRutaCloudinary, idFoto)
       await this.databaseService.executeQuery(
         tenant,
         `UPDATE fotosproductos SET url_foto = ?, isPrincipal = ?, rutaCloudinary = ? WHERE idFoto = ?`,

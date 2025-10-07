@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
+import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
+import { CloudinaryUtil } from 'src/util/cloudinary-util';
 import { Util } from 'src/util/util';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly databaseService: DatabaseService,
+    private readonly cloudinaryUtil: CloudinaryUtil,
     private readonly util: Util
   ) { }
 
@@ -67,7 +69,7 @@ export class AdminService {
 
   async getAllBrands(tenant: string): Promise<any> {
     const brands = await this.databaseService.executeQuery(tenant, `
-      SELECT idMarca, marca, activo FROM marcas;`);
+      SELECT idMarca, urlFoto, marca, activo FROM marcas;`);
 
     return brands || null;
   }
@@ -160,7 +162,6 @@ export class AdminService {
 
     // 2. Eliminar imágenes si corresponde
     if (body.fotoDeleted.length && body.fotoDeleted.length > 0) {
-      console.error("entro: ", body.fotoDeleted.length)
       await this.util.deleteProductImages(tenant, body);
     }
 
@@ -310,16 +311,31 @@ export class AdminService {
 
   }
 
-  async saveOrUpdateMarca(tenant: string, body: MarcaDto): Promise<any> {
+  async saveOrUpdateMarca(tenant: string, body: NewAttributeDto, file: Express.Multer.File): Promise<any> {
+    const rutaCloudinary = tenant + "/marcas/"
 
-    if (body.idMarca) {
+    if (body.idAttribute) {
       const marcas = await this.databaseService.executeQuery(tenant, `
-      SELECT idMarca FROM marcas WHERE idMarca = ?;`, [body.idMarca]);
+      SELECT idMarca FROM marcas WHERE idMarca = ?;`, [body.idAttribute]);
 
       if (marcas.length > 0) {
+        if (file) {
+          const publicId = rutaCloudinary + body.idAttribute;
+          //eliminar la imagen si file no esta vacio
+          await this.cloudinaryUtil.deleteFromCloudinary(publicId);
+
+          //subir nueva imagen si file no esta vacio
+          const upload = await this.cloudinaryUtil.uploadToCloudinary(file, body.idAttribute, rutaCloudinary);
+
+          //actualizar la url de la imagen de la marca
+          await this.databaseService.executeQuery(tenant, `
+            UPDATE marcas SET marca = ?, urlFoto = ? WHERE idMarca = ?;`,
+            [body.newAttribute, upload.secure_url, body.idAttribute]);
+        }
+
         const result = await this.databaseService.executeQuery(tenant, `
-      UPDATE marcas SET marca = ?, updated_at = NOW() WHERE idMarca = ?;`,
-          [body.marca, body.idMarca]);
+          UPDATE marcas SET marca = ?, updated_at = NOW() WHERE idMarca = ?;`,
+          [body.newAttribute, body.idAttribute]);
 
         return {
           message: 'Marca actualizada exitosamente',
@@ -333,15 +349,44 @@ export class AdminService {
     const lastIdMarca = rows.length > 0 ? rows[0].idMarca : "MARC0000";
     const idMarca = this.util.nextCode(lastIdMarca);
 
+    const upload = file ?
+      await this.cloudinaryUtil.uploadToCloudinary(file, idMarca, rutaCloudinary) : null;
+
     const result = await this.databaseService.executeQuery(tenant, `
-      INSERT INTO marcas (idMarca, marca, userId, created_at, updated_at)
-      VALUES (?, ?, ?, NOW(), NOW());`,
-      [idMarca, body.marca, body.userId]);
+      INSERT INTO marcas (idMarca, marca, urlFoto, activo, userId, created_at, updated_at)
+      VALUES (?, ?, ?, 1, ?, NOW(), NOW());`,
+      [idMarca, body.newAttribute, upload.secure_url, body.userId]);
 
     return {
       message: 'Marca creada exitosamente',
       result,
     };
+  }
+
+  async deleteBrand(tenant: string, idMarca: string) {
+    const exist = await this.databaseService.executeQuery(tenant, `
+      SELECT idProducto from productos WHERE idMarca = ?`, [idMarca]);
+
+    if (exist.length > 0) {
+      return {
+        message: "No se pudo eliminar, hay productos asociados",
+      }
+    } else {
+      const rutaCloudinary = tenant + "/marcas/"
+      const publicId = rutaCloudinary + idMarca;
+
+      //eliminar la imagen
+      await this.cloudinaryUtil.deleteFromCloudinary(publicId);
+
+      const result = await this.databaseService.executeQuery(tenant, `
+        DELETE from marcas WHERE idMarca = ?`, [idMarca]);
+
+      return {
+        message: "marca eliminada correctamente",
+        result
+      }
+    }
+
   }
 
   async saveOrUpdateColor(tenant: string, body: ColorDto): Promise<any> {

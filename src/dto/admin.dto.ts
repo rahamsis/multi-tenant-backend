@@ -75,6 +75,7 @@ export class SubCategorieDto {
 export class MarcaDto {
     idMarca: string;
     marca: string;
+    urlFoto: string;
     userId: string;
     created_at: Date
     updated_at: Date;
@@ -106,5 +107,11 @@ export class WebSite {
     direccionPrincipal: string;
     direccionSecundaria: string;
     correo: string;
+    userId: string;
+}
+
+export class NewAttributeDto {
+    newAttribute: string;
+    idAttribute: string;
     userId: string;
 }
