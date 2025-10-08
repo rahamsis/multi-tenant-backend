@@ -332,13 +332,17 @@ export class AdminController {
   }
 
   @Post('/update-website')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 50 * 1024 * 1024 }, // ⬅️ 50 MB por archivo
+  }))
   async updateWebSite(
     @Headers('x-tenant-id') tenant: string,
+    @UploadedFile() file: Express.Multer.File,
     @Res() res: Response,
     @Body() body: WebSite
   ) {
     try {
-      const data = await this.adminService.updateWebSite(tenant, body);
+      const data = await this.adminService.updateWebSite(tenant, body, file);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {

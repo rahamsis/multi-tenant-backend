@@ -9,7 +9,7 @@ export class DatabaseService {
     const varName = `MYSQL_${tenant.toUpperCase()}_${key.toUpperCase()}`;
     const value = process.env[varName];
     if (value === undefined) throw new Error(`Variable ${varName} no encontrada en .env`);
-    return value ;
+    return value;
   }
 
   private async getPool(tenant: string): Promise<mysql.Pool> {
@@ -38,6 +38,7 @@ export class DatabaseService {
       const [results] = await pool.execute(query, params);
       return results;
     } catch (error) {
+      console.error("❌ Error ejecutando la consulta:", error);
       throw new Error(`Error ejecutando la consulta en ${tenant}: ${error.message}`);
     }
   }

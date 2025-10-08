@@ -567,13 +567,14 @@ export class AdminService {
         e.telefonoSecundario, 
         e.direccionPrincipal, 
         e.direccionSecundaria, 
-        e.correo
+        e.correo,
+        e.logo
       FROM empresa e`);
 
     return empresa || null;
   }
 
-  async updateWebSite(tenant: string, body: WebSite): Promise<any> {
+  async updateWebSite(tenant: string, body: WebSite, file: Express.Multer.File): Promise<any> {
     const updateFields: string[] = [];
     const updateValues: any[] = [];
 
@@ -581,16 +582,23 @@ export class AdminService {
       if (["nombre", "idEmpresa"].includes(key)) return;
 
       const value = body[key as keyof WebSite];
-      if (value != null && value != "null" && value !== undefined && value !== "") {
+      if (value != null && value != "null" && value !== undefined) {
         updateFields.push(`${key} = ?`);
         updateValues.push(value)
       }
     })
 
+    const rutaCloudinary = tenant + "/"
+    if (file) {
+      const upload = await this.cloudinaryUtil.uploadToCloudinary(file, body.idEmpresa, rutaCloudinary)
+      updateValues.push("logo = ?")
+      updateValues.push(upload.secure_url);
+    }
+
     const sql = `UPDATE empresa SET ${updateFields.join(", ")}, updated_at = NOW() WHERE idEmpresa = ?`;
     updateValues.push(body.idEmpresa);
-    const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
 
+    const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
     return result || null
   }
 }

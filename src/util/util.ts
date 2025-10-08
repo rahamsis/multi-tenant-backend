@@ -40,7 +40,7 @@ export class Util {
         "packItemsToUpdate"].includes(key)) return;
 
       const value = body[key as keyof NewProductDto];
-      if (value !== null && value !== "null" && value !== undefined && value !== "") {
+      if (value !== null && value !== "null" && value !== undefined) {
         updateFields.push(`${key} = ?`);
         updateValues.push(value);
       }
