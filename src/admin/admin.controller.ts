@@ -3,7 +3,7 @@ import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Response, } from 'express';
-import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
+import { Banner, CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
 
 @ApiTags('Admin')
 @Controller()
@@ -343,6 +343,54 @@ export class AdminController {
   ) {
     try {
       const data = await this.adminService.updateWebSite(tenant, body, file);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Get('/get-banners')
+  async getBanners(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.adminService.getBanners(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/create-banners')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 50 * 1024 * 1024 }, // ⬅️ 50 MB por archivo
+  }))
+  async createBanner(
+    @Headers('x-tenant-id') tenant: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Res() res: Response,
+    @Body() body: Banner
+  ) {
+    try {
+      const data = await this.adminService.createBanner(tenant, body, file);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Delete('/delete-banners')
+  async deleteBanner(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Query('idBanner') idBanner: string,
+  ) {
+    try {
+      const data = await this.adminService.deleteBanner(tenant, idBanner);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {

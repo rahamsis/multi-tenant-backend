@@ -80,4 +80,18 @@ export class AppController {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
     }
   }
+
+  @Get('/backendApi/all-banners')
+  async getAllBanners(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.appService.getAllBanners(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
 }

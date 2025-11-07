@@ -165,4 +165,15 @@ export class AppService {
 
     return productos || null;
   }
+
+  async getAllBanners(tenant: string): Promise<any> {
+    const banners = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        b.idBanner, 
+        b.urlBanner, 
+        b.posicion
+      FROM banners b;`, []);
+
+    return banners || null;
+  }
 }

@@ -107,11 +107,19 @@ export class WebSite {
     direccionPrincipal: string;
     direccionSecundaria: string;
     correo: string;
+    logo: string;
     userId: string;
 }
 
 export class NewAttributeDto {
     newAttribute: string;
     idAttribute: string;
+    userId: string;
+}
+
+export class Banner {
+    idBanner: string;
+    urlBanner: string;
+    posicion: string;
     userId: string;
 }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
+import { Banner, CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
 import { CloudinaryUtil } from 'src/util/cloudinary-util';
 import { Util } from 'src/util/util';
 
@@ -582,7 +582,7 @@ export class AdminService {
       if (["nombre", "idEmpresa"].includes(key)) return;
 
       const value = body[key as keyof WebSite];
-      if (value != null && value != "null" && value !== undefined) {
+      if (value != null && value != "null" && value !== undefined && value !== "") {
         updateFields.push(`${key} = ?`);
         updateValues.push(value)
       }
@@ -591,7 +591,7 @@ export class AdminService {
     const rutaCloudinary = tenant + "/"
     if (file) {
       const upload = await this.cloudinaryUtil.uploadToCloudinary(file, body.idEmpresa, rutaCloudinary)
-      updateValues.push("logo = ?")
+      updateFields.push("logo = ?")
       updateValues.push(upload.secure_url);
     }
 
@@ -601,4 +601,79 @@ export class AdminService {
     const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
     return result || null
   }
+
+  async getBanners(tenant: string): Promise<any> {
+    const banners = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        b.idBanner, 
+        b.urlBanner, 
+        b.posicion
+      FROM banners b`);
+
+    return banners || null;
+  }
+
+  async createBanner(tenant: string, body: Banner, file: Express.Multer.File): Promise<any> {
+    // if (!file) {
+    //   throw new BadRequestException("El archivo de imagen es obligatorio");
+    // }
+
+    try {
+      // Obtener último ID
+      const rows = await this.databaseService.executeQuery(
+        tenant,
+        `SELECT idBanner FROM banners ORDER BY idBanner DESC LIMIT 1`,
+        []
+      );
+
+      const lastId = rows.length > 0 ? rows[0].idBanner : "BANR0000";
+      const idBanner = this.util.nextCode(lastId);
+
+      // Subir imagen
+      const rutaCloudinary = `${tenant}/banners/`;
+      const upload = await this.cloudinaryUtil.uploadToCloudinary(
+        file,
+        idBanner,
+        rutaCloudinary
+      );
+
+      // Guardar en BD
+      const result = await this.databaseService.executeQuery(
+        tenant,
+        `INSERT INTO banners (idBanner, urlBanner, posicion, userId, created_at, updated_at)
+       VALUES (?, ?, ?, ?, NOW(), NOW())`,
+        [idBanner, upload.secure_url, body.posicion, body.userId]
+      );
+
+      if (result.affectedRows > 0) {
+        return {
+          idBanner,
+          urlBanner: upload.secure_url,
+        };
+      }
+
+      throw new Error("No se pudo guardar el banner en la base de datos");
+    } catch (error) {
+      console.error("Error en createBanner:", error);
+      throw new Error("Error creando el banner");
+    }
+  }
+
+  async deleteBanner(tenant: string, idBanner: string) {
+    const rutaCloudinary = tenant + "/banners/"
+    const publicId = rutaCloudinary + idBanner;
+
+    //eliminar la imagen
+    await this.cloudinaryUtil.deleteFromCloudinary(publicId);
+
+    const result = await this.databaseService.executeQuery(tenant, `
+        DELETE from banners WHERE idBanner = ?`, [idBanner]);
+
+    return {
+      message: "Banner eliminada correctamente",
+      result
+    }
+  }
+
 }
+
