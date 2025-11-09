@@ -39,14 +39,14 @@ export class AuthService {
     );
 
     if (!users || users.length === 0) {
-      throw new UnauthorizedException('Usuario no encontrado');
+      throw new Error('el correo ingresado no es valido');
     }
 
     const user = users[0];
     const passwordValid = await bcrypt.compare(password, user.password);
 
     if (!passwordValid) {
-      throw new UnauthorizedException('Credenciales incorrectas');
+      throw new Error('Credenciales incorrectas');
     }
 
     return user;
