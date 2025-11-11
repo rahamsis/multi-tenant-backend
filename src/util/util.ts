@@ -32,6 +32,7 @@ export class Util {
 
     Object.keys(body).forEach((key) => {
       if (["imagen",
+        "idProducto",
         "rutaCloudinary",
         "nuevaRutaCloudinary",
         "fotoDeleted",
@@ -42,7 +43,7 @@ export class Util {
       const value = body[key as keyof NewProductDto];
       if (value !== null && value !== "null" && value !== undefined) {
         updateFields.push(`${key} = ?`);
-        updateValues.push(value);
+        updateValues.push(value === "true" ? 1 : value === "false" ? 0 : value);
       }
     });
 
