@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from './database/database.service';
+import { BodyDto } from './dto/login.dto';
+import * as bcrypt from 'bcrypt';
+import { Console } from 'console';
 
 @Injectable()
 export class AppService {
@@ -175,5 +178,34 @@ export class AppService {
       FROM banners b;`, []);
 
     return banners || null;
+  }
+
+  async login(tenant: string, body: BodyDto): Promise<any> {
+    const user = await this.databaseService.executeQuery(
+      tenant,
+      `SELECT userId, nombre, apellidos, email, password, perfil, activo
+      FROM users
+      WHERE email = ?`,
+      [body.email]
+    );
+
+    if (user.length === 0) {
+      return { message: 'Correo inválido' };
+    }
+
+    if (!user[0].activo) {
+      return { message: 'Usuario inactivo' };
+    }
+
+    const passwordsMatch = await bcrypt.compare(body.password, user[0].password);
+    if (!passwordsMatch) {
+      return { message: 'Credenciales inválidas' };
+    }
+
+    const { password, ...userWithoutPassword } = user[0];
+
+    return {
+      user: userWithoutPassword
+    };
   }
 }

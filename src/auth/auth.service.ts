@@ -34,7 +34,8 @@ export class AuthService {
   async validateUser(email: string, password: string, tenantId: string) {
     const users = await this.databaseService.executeQuery(
       tenantId,
-      'SELECT userId, nombre, apellidos, email, password, perfil, activo FROM users WHERE email = ? LIMIT 1',
+      `SELECT userId, nombre, apellidos, email, password, perfil, activo 
+      FROM users WHERE email = ? and perfil = 'admin' LIMIT 1`,
       [email],
     );
 

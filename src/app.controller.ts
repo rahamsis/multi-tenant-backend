@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpStatus, Post, Put, Query, Res, Req, Headers 
 import { AppService } from './app.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Response, } from 'express';
+import { BodyDto } from './dto/login.dto';
 
 @ApiTags('Root')
 @Controller()
@@ -88,6 +89,21 @@ export class AppController {
   ) {
     try {
       const data = await this.appService.getAllBanners(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/backendApi/login')
+  async login(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: BodyDto,
+  ) {
+    try {
+      const data = await this.appService.login(tenant, body);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
