@@ -2,11 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from './database/database.service';
 import { BodyDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
-import { Console } from 'console';
+import { Util } from './util/util';
 
 @Injectable()
 export class AppService {
-  constructor(private readonly databaseService: DatabaseService) { }
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly util: Util
+  ) { }
 
   async getMenus(tenant: string): Promise<any> {
     const menus = await this.databaseService.executeQuery(tenant, `
@@ -195,6 +198,25 @@ export class AppService {
 
     if (!user[0].activo) {
       return { message: 'Usuario inactivo' };
+    }
+
+    const deviceInfo = await this.databaseService.executeQuery(
+      tenant,
+      `SELECT deviceId, userId, device, ipAdress FROM dispositivos WHERE userId = ?`,
+      [user[0].userId]
+    );
+
+    if (deviceInfo.length > 0 && user[0].perfil !== 'admin') {
+      return { message: 'ya existe un dispositivo afiliado, contacte con el administrador del sistema o escribanos por WhatsApp' };
+    } else {
+      // registramos el dispositivo
+      const lastIdDevide = deviceInfo.length > 0 ? deviceInfo[0].deviceId : "DV0000";
+      const deviceID = this.util.nextCode(lastIdDevide);
+      await this.databaseService.executeQuery(
+        tenant,
+        `INSERT INTO dispositivos (deviceId, userId, device, ipAdress, created_at) VALUES (?, ?, ?, ?, ?)`,
+        [deviceID, user[0].userId, body.device, body.ipAdress, new Date()]
+      );
     }
 
     const passwordsMatch = await bcrypt.compare(body.password, user[0].password);

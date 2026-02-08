@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { Banner, CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
+import { Banner, CategorieDto, ColorDto, MenuDto, NewAttributeDto, NewProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
 import { CloudinaryUtil } from 'src/util/cloudinary-util';
 import { Util } from 'src/util/util';
 
@@ -151,7 +151,7 @@ export class AdminService {
   }
 
   async updateProduct(tenant: string, files: Express.Multer.File[], body: NewProductDto): Promise<any> {
-    console.log('AdminService -> updateProduct -> body', body);
+    // console.log('AdminService -> updateProduct -> body', body);
     // Parse fotoDeleted to ensure it's an array
     this.util.parseFotoDeleted(body);
     // Parse packItemsToAdd, packItemsToRemove y packItemsToUpdate to ensure it's an array
@@ -178,8 +178,8 @@ export class AdminService {
     // 5. Actualizar producto
     const sql = `UPDATE productos SET ${updateFields.join(", ")}, updated_at = NOW() WHERE idProducto = ?`;
     updateValues.push(body.idProducto);
-    console.log('AdminService -> updateProduct -> sql', sql);
-    console.log('AdminService -> updateProduct -> updateValues', updateValues);
+    // console.log('AdminService -> updateProduct -> sql', sql);
+    // console.log('AdminService -> updateProduct -> updateValues', updateValues);
     const result = await this.databaseService.executeQuery(tenant, sql, updateValues);
 
     // 6. Actualizamos paquetesproductos según sea necesario

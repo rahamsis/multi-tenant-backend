@@ -8,6 +8,8 @@ import { R2Module } from './r2/r2.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
+import { Util } from './util/util';
+import { CloudinaryUtil } from './util/cloudinary-util';
 
 @Module({
   imports: [
@@ -19,7 +21,7 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, CloudinaryUtil, Util],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
