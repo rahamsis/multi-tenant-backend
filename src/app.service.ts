@@ -184,50 +184,58 @@ export class AppService {
   }
 
   async login(tenant: string, body: BodyDto): Promise<any> {
+
     const user = await this.databaseService.executeQuery(
-      tenant,
-      `SELECT userId, nombre, apellidos, email, password, perfil, activo
-      FROM users
-      WHERE email = ?`,
+      tenant, `SELECT userId, nombre, apellidos, email, password, perfil, activo FROM users WHERE email = ?`,
       [body.email]
     );
 
-    if (user.length === 0) {
-      return { message: 'Correo inválido' };
-    }
+    if (user.length === 0) return { message: 'Correo inválido' };
+    if (!user[0].activo) return { message: 'Usuario inactivo' };
 
-    if (!user[0].activo || user[0].activo === 0) {
-      return { message: 'Usuario inactivo' };
-    }
+    // VALIDAR PASSWORD PRIMERO
+    const passwordsMatch = await bcrypt.compare(body.password, user[0].password);
+    if (!passwordsMatch) return { message: 'Credenciales inválidas' };
 
-    const deviceInfo = await this.databaseService.executeQuery(
-      tenant,
-      `SELECT deviceId, userId, device, ipAdress FROM dispositivos WHERE userId = ? ORDER BY deviceId DESC LIMIT 1`,
+    // TRAER TODOS LOS DISPOSITIVOS
+    const devices = await this.databaseService.executeQuery(
+      tenant, `SELECT deviceId, device, ipAdress FROM dispositivos WHERE userId = ?`,
       [user[0].userId]
     );
 
-    if (deviceInfo.length > 0 && user[0].perfil !== 'admin') {
-      return { message: 'ya existe un dispositivo afiliado, contacte con el administrador del sistema o escribanos por WhatsApp' };
-    } else {
-      // registramos el dispositivo
-      const lastIdDevide = deviceInfo.length > 0 ? deviceInfo[0].deviceId : "DV0000";
-      const deviceID = this.util.nextCode(lastIdDevide);
-      await this.databaseService.executeQuery(
-        tenant,
-        `INSERT INTO dispositivos (deviceId, userId, device, ipAdress, created_at) VALUES (?, ?, ?, ?, ?)`,
-        [deviceID, user[0].userId, body.device, body.ipAdress, new Date()]
-      );
+    // verificar si ya existe ese mismo dispositivo
+    const existingDevice = devices.find(
+      d => d.device === body.device && d.ipAdress === body.ipAdress
+    );
+
+    // usuario normal → solo 1 dispositivo distinto permitido
+    if (user[0].perfil !== 'admin') {
+      if (devices.length > 0 && !existingDevice) {
+        return {
+          message:
+            'ya existe un dispositivo afiliado, contacte con el administrador del sistema'
+        };
+      }
     }
 
-    const passwordsMatch = await bcrypt.compare(body.password, user[0].password);
-    if (!passwordsMatch) {
-      return { message: 'Credenciales inválidas' };
+    // registrar si no existe
+    if (!existingDevice) {
+
+      const lastId = devices.length > 0
+        ? devices[devices.length - 1].deviceId
+        : 'DV0000';
+
+      const newId = this.util.nextCode(lastId);
+
+      await this.databaseService.executeQuery(
+        tenant, `INSERT INTO dispositivos (deviceId, userId, device, ipAdress, created_at) VALUES (?, ?, ?, ?, ?)`,
+        [newId, user[0].userId, body.device, body.ipAdress, new Date()]
+      );
     }
 
     const { password, ...userWithoutPassword } = user[0];
 
-    return {
-      user: userWithoutPassword
-    };
+    return { user: userWithoutPassword };
   }
+
 }
