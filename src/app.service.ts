@@ -196,13 +196,13 @@ export class AppService {
       return { message: 'Correo inválido' };
     }
 
-    if (!user[0].activo) {
+    if (!user[0].activo || user[0].activo === 0) {
       return { message: 'Usuario inactivo' };
     }
 
     const deviceInfo = await this.databaseService.executeQuery(
       tenant,
-      `SELECT deviceId, userId, device, ipAdress FROM dispositivos WHERE userId = ?`,
+      `SELECT deviceId, userId, device, ipAdress FROM dispositivos WHERE userId = ? ORDER BY deviceId DESC LIMIT 1`,
       [user[0].userId]
     );
 
