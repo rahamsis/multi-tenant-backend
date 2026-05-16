@@ -19,7 +19,7 @@ export class AppController {
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
 
@@ -34,7 +34,7 @@ export class AppController {
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
 
@@ -48,7 +48,7 @@ export class AppController {
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
   
@@ -62,7 +62,7 @@ export class AppController {
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
 
@@ -78,7 +78,7 @@ export class AppController {
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
 
@@ -92,7 +92,7 @@ export class AppController {
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
 
@@ -107,7 +107,7 @@ export class AppController {
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
 }

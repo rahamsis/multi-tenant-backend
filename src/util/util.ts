@@ -96,21 +96,21 @@ export class Util {
     }
   }
 
-  async moveAllProductImages(tenant: string, body: NewProductDto) {
-    const fotos = await this.databaseService.executeQuery(
-      tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ?`, [body.idProducto]
-    );
+  // async moveAllProductImages(tenant: string, body: NewProductDto) {
+  //   const fotos = await this.databaseService.executeQuery(
+  //     tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ?`, [body.idProducto]
+  //   );
 
-    for (const foto of fotos) {
-      const url_secure = await this.cloudinaryUtil.moveImage(body.rutaCloudinary, body.nuevaRutaCloudinary, foto.idFoto);
+  //   for (const foto of fotos) {
+  //     const url_secure = await this.cloudinaryUtil.moveImage(body.rutaCloudinary, body.nuevaRutaCloudinary, foto.idFoto);
 
-      await this.databaseService.executeQuery(
-        tenant,
-        `UPDATE fotosproductos SET rutaCloudinary = ?, url_foto = ? WHERE idFoto = ?`,
-        [body.nuevaRutaCloudinary, url_secure, foto.idFoto]
-      );
-    }
-  }
+  //     await this.databaseService.executeQuery(
+  //       tenant,
+  //       `UPDATE fotosproductos SET rutaCloudinary = ?, url_foto = ? WHERE idFoto = ?`,
+  //       [body.nuevaRutaCloudinary, url_secure, foto.idFoto]
+  //     );
+  //   }
+  // }
 
   async deleteProductImages(tenant: string, body: NewProductDto) {
     for (const foto of body.fotoDeleted) {
@@ -145,7 +145,7 @@ export class Util {
     }
   }
 
-  async addNewProductImages(tenant: string, files: Express.Multer.File[], idProducto: string, userId: string, nuevaRutaCloudinary: string) {
+  async addNewProductImages(tenant: string, files: Express.Multer.File[], idProducto: string, userId: string, rutaCloudinary: string) {
     const principalExists = await this.databaseService.executeQuery(
       tenant, `SELECT idFoto FROM fotosproductos WHERE idProducto = ? AND isPrincipal = 1`, [idProducto]
     );
@@ -159,18 +159,18 @@ export class Util {
 
       await this.databaseService.executeQuery(
         tenant,
-        `INSERT INTO fotosproductos (idFoto, idProducto, userId, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
-        [idFoto, idProducto, userId]
+        `INSERT INTO fotosproductos (idFoto, idProducto, userId, url_foto, isPrincipal, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+        [idFoto, idProducto, userId, 'temporal', 0]
       );
 
-      const upload = await this.cloudinaryUtil.uploadToCloudinary(file, idFoto, nuevaRutaCloudinary);
+      const upload = await this.cloudinaryUtil.uploadToCloudinary(file, idFoto, rutaCloudinary);
 
       // Solo asignamos principal a la primera foto nueva si no hay ninguna existente
       const principal = !isPrincipalAssigned && index === 0 ? 1 : 0;
       await this.databaseService.executeQuery(
         tenant,
         `UPDATE fotosproductos SET url_foto = ?, isPrincipal = ?, rutaCloudinary = ? WHERE idFoto = ?`,
-        [upload.secure_url, principal, nuevaRutaCloudinary, idFoto]
+        [upload.secure_url, principal, rutaCloudinary, idFoto]
       );
     }
   }

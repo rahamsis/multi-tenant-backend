@@ -48,7 +48,12 @@ export class AdminService {
         GROUP BY p.idProducto
         ORDER BY p.idProducto;`,);
 
-    return nuevosProductos || null;
+    return nuevosProductos.map((row) => ({
+      ...row,
+      fotos: row.fotos
+        ? JSON.parse(row.fotos)
+        : []
+    }));
   }
 
   async getAllCategories(tenant: string): Promise<any> {
@@ -97,7 +102,7 @@ export class AdminService {
 
     // 1. Subir nuevas imágenes
     if (files?.length) {
-      await this.util.addNewProductImages(tenant, files, idProducto, body.userId, body.nuevaRutaCloudinary);
+      await this.util.addNewProductImages(tenant, files, idProducto, body.userId, body.rutaCloudinary);
     }
 
     const result = await this.databaseService.executeQuery(tenant, `
@@ -166,13 +171,13 @@ export class AdminService {
     }
 
     // 3. Mover imágenes si cambió la ruta
-    if (body.rutaCloudinary !== body.nuevaRutaCloudinary) {
-      await this.util.moveAllProductImages(tenant, body);
-    }
+    // if (body.rutaCloudinary !== body.nuevaRutaCloudinary) {
+    //   await this.util.moveAllProductImages(tenant, body);
+    // }
 
     // 4. Subir nuevas imágenes
     if (files?.length && files?.length > 0) {
-      await this.util.addNewProductImages(tenant, files, body.idProducto, body.userId, body.nuevaRutaCloudinary);
+      await this.util.addNewProductImages(tenant, files, body.idProducto, body.userId, body.rutaCloudinary);
     }
 
     // 5. Actualizar producto
@@ -488,7 +493,9 @@ export class AdminService {
       LEFT JOIN colores cl ON p.idColor = cl.idColor
       WHERE p.idProducto = ?;`, [idProducto]);
 
-    return nuevosProductos || null;
+    return nuevosProductos.map((row) => ({
+      ...row
+    }));
   }
 
   async updateStatusCategorie(tenant: string, body: { idCategoria: number, status: number }): Promise<any> {
