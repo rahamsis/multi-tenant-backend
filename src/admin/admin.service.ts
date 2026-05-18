@@ -68,15 +68,15 @@ export class AdminService {
         GROUP BY p.idProducto
         ORDER BY p.idProducto;`,);
 
-        console.log('AdminService -> getAllProduct -> nuevosProductos', nuevosProductos);
-
-    return nuevosProductos.map((row) => ({
+    const retorno = nuevosProductos.map((row) => ({
       ...row,
       fotos: row.fotos ? JSON.parse(row.fotos) : [],
       productospaquete: row.productospaquete
         ? JSON.parse(row.productospaquete)
         : []
     }));
+    console.log('AdminService -> getAllProduct -> retorno', retorno);
+    return retorno;
   }
 
   async getAllCategories(tenant: string): Promise<any> {
