@@ -70,11 +70,21 @@ export class AdminService {
 
     const retorno = nuevosProductos.map((row) => ({
       ...row,
-      fotos: row.fotos ? JSON.parse(row.fotos) : [],
-      productospaquete: row.productospaquete
-        ? JSON.parse(row.productospaquete)
-        : []
+      fotos:
+        typeof row.fotos === 'string'
+          ? JSON.parse(row.fotos)
+          : row.fotos || [],
+
+      productospaquete:
+        typeof row.productospaquete === 'string'
+          ? JSON.parse(row.productospaquete)
+          : row.productospaquete || []
     }));
+    console.log(
+      'TIPOS:',
+      typeof nuevosProductos[0]?.fotos,
+      typeof nuevosProductos[0]?.productospaquete
+    );
     console.log('AdminService -> getAllProduct -> retorno', retorno);
     return retorno;
   }
