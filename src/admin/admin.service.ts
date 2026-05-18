@@ -24,6 +24,7 @@ export class AdminService {
           m.marca, 
           p.nombre,
           p.precio,
+          p.tipo,
           p.cantidad,
           cl.idColor,
           cl.color,
@@ -38,7 +39,26 @@ export class AdminService {
               'url_foto', fp.url_foto,
               'isPrincipal', fp.isPrincipal
             )
-          ) AS fotos
+          ) AS fotos,
+          -- productos del paquete: subconsulta correlacionada
+          ( SELECT COALESCE(
+            JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'idProductoPaquete', pp.idProductoPaquete,
+                'idPaquete', pp.idPaquete,
+                'idProducto', pp.idProducto,
+                'nombre', p2.nombre,
+                'imagen', fp2.url_foto,
+                'cantidad', pp.cantidad
+              )
+            ),
+            JSON_ARRAY())
+            FROM productospaquete pp
+            LEFT JOIN productos p2 ON p2.idProducto = pp.idProducto
+            LEFT JOIN fotosproductos fp2 ON fp2.idProducto = pp.idProducto
+              AND fp2.isPrincipal = 1
+            WHERE pp.idPaquete = p.idProducto
+          ) AS productospaquete
         FROM productos p
         LEFT JOIN categorias c ON p.idCategoria = c.idCategoria
         LEFT JOIN subcategorias sc ON p.idSubCategoria = sc.idSubCategoria
@@ -50,8 +70,9 @@ export class AdminService {
 
     return nuevosProductos.map((row) => ({
       ...row,
-      fotos: row.fotos
-        ? JSON.parse(row.fotos)
+      fotos: row.fotos ? JSON.parse(row.fotos) : [],
+      productospaquete: row.productospaquete
+        ? JSON.parse(row.productospaquete)
         : []
     }));
   }
