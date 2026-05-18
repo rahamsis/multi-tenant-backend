@@ -520,7 +520,16 @@ export class AdminService {
       WHERE p.idProducto = ?;`, [idProducto]);
 
     return nuevosProductos.map((row) => ({
-      ...row
+      ...row,
+      fotos:
+        typeof row.fotos === 'string'
+          ? JSON.parse(row.fotos)
+          : row.fotos || [],
+
+      productospaquete:
+        typeof row.productospaquete === 'string'
+          ? JSON.parse(row.productospaquete)
+          : row.productospaquete || []
     }));
   }
 
