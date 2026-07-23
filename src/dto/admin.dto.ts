@@ -122,4 +122,6 @@ export class Banner {
     urlBanner: string;
     posicion: string;
     userId: string;
+    titulo: string;
+    descripcion: string;
 }

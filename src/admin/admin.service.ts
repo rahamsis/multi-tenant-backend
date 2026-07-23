@@ -651,7 +651,9 @@ export class AdminService {
       SELECT 
         b.idBanner, 
         b.urlBanner, 
-        b.posicion
+        b.posicion,
+        b.titulo,
+        b.descripcion
       FROM banners b`);
 
     return banners || null;
@@ -684,9 +686,9 @@ export class AdminService {
       // Guardar en BD
       const result = await this.databaseService.executeQuery(
         tenant,
-        `INSERT INTO banners (idBanner, urlBanner, posicion, userId, created_at, updated_at)
-       VALUES (?, ?, ?, ?, NOW(), NOW())`,
-        [idBanner, upload.secure_url, body.posicion, body.userId]
+        `INSERT INTO banners (idBanner, urlBanner, posicion, userId, created_at, updated_at, titulo, descripcion)
+       VALUES (?, ?, ?, ?, NOW(), NOW(), ?, ?)`,
+        [idBanner, upload.secure_url, body.posicion, body.userId, body.titulo, body.descripcion]
       );
 
       if (result.affectedRows > 0) {
@@ -700,6 +702,25 @@ export class AdminService {
     } catch (error) {
       console.error("Error en createBanner:", error);
       throw new Error("Error creando el banner");
+    }
+  }
+
+  async updateBanner(tenant: string, body: Banner, file: Express.Multer.File): Promise<any> {
+    try {
+      // Guardar en BD
+      const result = await this.databaseService.executeQuery(tenant,
+        `UPDATE banners set updated_at = NOW(), titulo = ?, descripcion = ? where idBanner = ?`,
+        [body.titulo, body.descripcion, body.idBanner]
+      );
+
+      if (result.affectedRows > 0) {
+        return result;
+      }
+
+      throw new Error("No se pudo guardar el banner en la base de datos");
+    } catch (error) {
+      console.error("Error en updateBanner:", error);
+      throw new Error("Error actualizando el banner");
     }
   }
 

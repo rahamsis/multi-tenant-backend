@@ -383,6 +383,25 @@ export class AdminController {
     }
   }
 
+  @Post('/update-banners')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 50 * 1024 * 1024 }, // ⬅️ 50 MB por archivo
+  }))
+  async updateBanner(
+    @Headers('x-tenant-id') tenant: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Res() res: Response,
+    @Body() body: Banner
+  ) {
+    try {
+      const data = await this.adminService.updateBanner(tenant, body, file);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
   @Delete('/delete-banners')
   async deleteBanner(
     @Headers('x-tenant-id') tenant: string,

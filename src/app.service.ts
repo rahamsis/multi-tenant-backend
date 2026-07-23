@@ -177,7 +177,9 @@ export class AppService {
       SELECT 
         b.idBanner, 
         b.urlBanner, 
-        b.posicion
+        b.posicion,
+        b.titulo,
+        b.descripcion
       FROM banners b;`, []);
 
     return banners || null;
