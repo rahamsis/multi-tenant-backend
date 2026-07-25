@@ -3,7 +3,7 @@ import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import { ApiTags } from '@nestjs/swagger';
 import { Response, } from 'express';
-import { Banner, CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
+import { Banner, CategorieDto, ColorDto, MarcaDto, MenuDto, NewAttributeDto, NewProductDto, ProductDto, SubCategorieDto, VideoPrincipal, WebSite } from 'src/dto/admin.dto';
 
 @ApiTags('Admin')
 @Controller()
@@ -410,6 +410,50 @@ export class AdminController {
   ) {
     try {
       const data = await this.adminService.deleteBanner(tenant, idBanner);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Get('/get-video')
+  async getVideoPrincipal(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.adminService.getVideoPrincipal(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Post('/save-video')
+  async createVideoPrincipal(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Body() body: VideoPrincipal
+  ) {
+    try {
+      const data = await this.adminService.saveVideoPrincipal(tenant, body);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+    }
+  }
+
+  @Delete('/delete-video')
+  async deleteVideo(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+    @Query('idVideo') idVideo: string,
+  ) {
+    try {
+      const data = await this.adminService.deleteVideo(tenant, idVideo);
 
       return res.status(HttpStatus.OK).json(data);
     } catch (error) {

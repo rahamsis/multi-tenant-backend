@@ -125,3 +125,11 @@ export class Banner {
     titulo: string;
     descripcion: string;
 }
+
+export class VideoPrincipal {
+    idVideo: string;
+    titulo: string;
+    descripcion: string
+    urlVideo: string;
+    userId: string;
+}

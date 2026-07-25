@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { Banner, CategorieDto, ColorDto, MenuDto, NewAttributeDto, NewProductDto, SubCategorieDto, WebSite } from 'src/dto/admin.dto';
+import { Banner, CategorieDto, ColorDto, MenuDto, NewAttributeDto, NewProductDto, SubCategorieDto, VideoPrincipal, WebSite } from 'src/dto/admin.dto';
 import { CloudinaryUtil } from 'src/util/cloudinary-util';
 import { Util } from 'src/util/util';
 
@@ -740,5 +740,77 @@ export class AdminService {
     }
   }
 
+  async getVideoPrincipal(tenant: string): Promise<any> {
+    const banners = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        v.idVideo, 
+        v.urlVideo, 
+        v.titulo,
+        v.descripcion
+      FROM video v`);
+
+    return banners || null;
+  }
+
+  async saveVideoPrincipal(tenant: string, body: VideoPrincipal): Promise<any> {
+    try {
+      console.log("AdminService -> saveVideoPrincipal -> body", body);
+      // Obtener último ID
+      const rows = await this.databaseService.executeQuery(
+        tenant,
+        `SELECT idVideo FROM video ORDER BY idVideo DESC LIMIT 1`,
+        []
+      );
+
+      const lastId = rows.length > 0 ? rows[0].idVideo : "VD0000";
+      const idVideo = this.util.nextCode(lastId);
+
+      if (body.idVideo != null && body.idVideo != undefined && body.idVideo != "") {
+        const result = await this.databaseService.executeQuery(
+          tenant,
+          `UPDATE video 
+          SET urlVideo = ?, titulo = ?, descripcion = ?, userId = ?, updated_at = NOW() 
+          WHERE idVideo = ?`,
+          [body.urlVideo, body.titulo, body.descripcion, body.userId, body.idVideo]
+        );
+
+        if (result.affectedRows > 0) {
+          return result;
+        }
+
+        throw new Error("No se pudo actualizar el video en la base de datos");
+      } else {
+        // Guardar en BD
+        const result = await this.databaseService.executeQuery(
+          tenant,
+          `INSERT INTO video (idVideo, urlVideo, titulo, descripcion, userId, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+          [idVideo, body.urlVideo, body.titulo, body.descripcion, body.userId]
+        );
+
+        if (result.affectedRows > 0) {
+          return {
+            idVideo,
+            urlVideo: body.urlVideo,
+          };
+        }
+
+        throw new Error("No se pudo guardar el video en la base de datos");
+      }
+    } catch (error) {
+      console.error("Error en saveVideoPrincipal:", error);
+      throw new Error("Error creando el video");
+    }
+  }
+
+  async deleteVideo(tenant: string, idVideo: string) {
+    const result = await this.databaseService.executeQuery(tenant, `
+        DELETE from video WHERE idVideo = ?`, [idVideo]);
+
+    return {
+      message: "Video eliminado correctamente",
+      result
+    }
+  }
 }
 

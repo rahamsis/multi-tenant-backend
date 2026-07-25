@@ -110,4 +110,18 @@ export class AppController {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
     }
   }
+
+  @Get('/backendApi/video-principal')
+  async getVideoPrincipal(
+    @Headers('x-tenant-id') tenant: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const data = await this.appService.getVideoPrincipal(tenant);
+
+      return res.status(HttpStatus.OK).json(data);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: error });
+    }
+  }
 }

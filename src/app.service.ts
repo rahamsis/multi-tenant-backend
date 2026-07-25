@@ -240,4 +240,15 @@ export class AppService {
     return { user: userWithoutPassword };
   }
 
+  async getVideoPrincipal(tenant: string): Promise<any> {
+    const video = await this.databaseService.executeQuery(tenant, `
+      SELECT 
+        v.idVideo,
+        v.urlVideo,
+        v.titulo,
+        v.descripcion
+      FROM video v;`, []);
+
+    return video || null;
+  }
 }
